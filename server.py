@@ -336,5 +336,4 @@ def build_error(context: Dict[str, Any], zh_message: str, en_message: str) -> Di
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run("server:app", host="0.0.0.0", port=8787, reload=False)
+    uvicorn.run("server:app", host="0.0.0.0", port=9931, reload=False)

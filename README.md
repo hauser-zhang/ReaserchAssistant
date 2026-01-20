@@ -1,6 +1,6 @@
 ﻿# AI Assisted Dissertation Studio
 
-An AI-assisted workspace for dissertation writing and literature management. This version provides a research-focused UI, multi-page modules, and mock API responses to support iterative development.
+An AI-assisted workspace for dissertation writing and literature management. This version provides a research-focused UI, multi-page modules, and live model calls for iterative development.
 
 ## Features
 
@@ -40,7 +40,7 @@ The Python backend handles all model calls. The legacy `server.js` is now static
 
 On the home page, select a provider and set:
 
-- **Model ID** (e.g. `gpt-5.1`, `gemini-1.5-pro`, `deepseek-chat`)
+- **Model ID** (e.g. `gpt-5.1`, `gemini-1.5-flash`, `deepseek-chat`)
 - **API Key** (required)
 - **API Base URL** (optional; defaults are prefilled)
 
@@ -64,8 +64,17 @@ Module prompts live in `prompts/prompts.json` with Chinese and English variants.
 - **Gemini**: Create a key in Google AI Studio: `https://aistudio.google.com/app/apikey`.
 - **DeepSeek**: Create a key in the DeepSeek console: `https://platform.deepseek.com/`.
 
+## Troubleshooting
+
+- If you see `TypeError: Client.__init__() got an unexpected keyword argument 'proxies'`, reinstall dependencies so the pinned `httpx` version is used:
+
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt --upgrade --force-reinstall
+```
+
 ## Notes
 
 - No automated tests are configured yet.
-- Mock responses are used until real model integrations are wired up.
+- Model calls rely on your API key and selected provider.
 - For production use, add authentication and rate limiting.
