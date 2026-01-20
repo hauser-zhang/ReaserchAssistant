@@ -96,8 +96,13 @@ def handle_module(module_name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         if not normalized:
             return build_error(context, "模型返回格式不正确。", "The model returned invalid JSON.")
         return normalized
-    except Exception:
-        return build_error(context, "模型调用失败，请检查 API Key。", "Model call failed. Check your API key.")
+    except Exception as exc:
+        detail = f"{type(exc).__name__}: {exc}"
+        return build_error(
+            context,
+            f"模型调用失败：{detail}",
+            f"Model call failed: {detail}",
+        )
 
 
 def build_context(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -147,7 +152,7 @@ def normalize_model(model: Dict[str, Any]) -> Dict[str, Any]:
     defaults = {
         "gpt": {"model": "gpt-5.1", "base_url": "https://api.openai.com/v1"},
         "deepseek": {"model": "deepseek-chat", "base_url": "https://api.deepseek.com/v1"},
-        "gemini": {"model": "gemini-1.5-pro", "base_url": ""},
+        "gemini": {"model": "gemini-1.5-flash", "base_url": ""},
     }
     preset = defaults.get(provider, defaults["gpt"])
     return {
@@ -224,7 +229,10 @@ def call_gemini(model: Dict[str, Any], prompt: str, system_prompt: str) -> str:
     if genai is None:
         raise RuntimeError("google-generativeai SDK is not installed")
     genai.configure(api_key=model["api_key"])
-    gemini_model = genai.GenerativeModel(model_name=model["model"])
+    model_name = model["model"]
+    if not model_name.startswith(("models/", "tunedModels/")):
+        model_name = f"models/{model_name}"
+    gemini_model = genai.GenerativeModel(model_name=model_name)
     response = gemini_model.generate_content(f"{system_prompt}\n\n{prompt}")
     return response.text or ""
 

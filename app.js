@@ -14,7 +14,7 @@ const modelPresets = {
   },
   gemini: {
     label: "Gemini",
-    model: "gemini-1.5-pro",
+    model: "gemini-1.5-flash",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta"
   },
   deepseek: {
@@ -779,12 +779,21 @@ async function callApi(endpoint, payload) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    if (!response.ok) {
-      return null;
+    const contentType = response.headers.get("content-type") || "";
+    let data = null;
+    if (contentType.includes("application/json")) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      data = text ? { error: text } : null;
     }
-    return await response.json();
+    if (!response.ok) {
+      return data && data.error ? data : { error: `Request failed (${response.status})` };
+    }
+    return data;
   } catch (error) {
-    return null;
+    const message = error && error.message ? error.message : "";
+    return { error: message ? `Network error: ${message}` : t("errorRequestFailed") };
   }
 }
 
