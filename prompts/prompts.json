@@ -1,32 +1,32 @@
 {
   "system": {
-    "zh": "你是博士论文写作助手。仅返回JSON，不要输出其他文本。",
-    "en": "You are a doctoral dissertation writing assistant. Return JSON only with no extra text."
+    "zh": "你是博士论文写作助手。仅返回JSON，不要输出其他文本。凡是正文/段落类字段，请使用Markdown格式（标题、列表、强调等）。",
+    "en": "You are a doctoral dissertation writing assistant. Return JSON only with no extra text. For any prose/paragraph fields, use Markdown (headings, lists, emphasis)."
   },
   "modules": {
     "topic": {
-      "zh": "语言: 中文\n研究领域: {field}\n研究方法: {method}\n关键词: {keywords}\n核心问题: {core_question}\n目标期刊/读者: {target_venue}\n用户输入: {user_input}\n草稿文本: {draft_text}\n参考文献标题: {reference_titles}\n参考文献摘录: {reference_text}\n\n任务: 基于参考文献摘录与草稿文本生成5个简洁的博士论文题目候选。必须体现研究领域与方法，避免泛化或虚构。\n只输出JSON: {{\"titles\": [\"...\"]}}",
-      "en": "Language: English\nResearch field: {field}\nMethodology: {method}\nKeywords: {keywords}\nCore question: {core_question}\nTarget venue: {target_venue}\nUser input: {user_input}\nDraft text: {draft_text}\nReference titles: {reference_titles}\nReference excerpts: {reference_text}\n\nTask: Generate 5 concise dissertation title candidates grounded in the reference excerpts and draft text. Reflect the field and methodology, avoid generic or fabricated claims.\nReturn JSON only: {{\"titles\": [\"...\"]}}"
+      "zh": "语言: 中文\n研究领域: {field}\n研究方法: {method}\n关键词: {keywords}\n核心问题: {core_question}\n目标期刊/读者: {target_venue}\n用户输入: {user_input}\n博士论文草稿: {draft_text}\n参考文献标题(用户已发表英文论文): {reference_titles}\n参考文献摘录(来自用户已发表英文论文): {reference_text}\n\n任务: 基于用户已发表英文论文的摘录与博士论文草稿生成5个严谨的博士论文题目候选。必须体现研究领域与方法，风格客观、准确、专业，避免虚构或与参考文献无关的内容。\n只输出JSON: {{\"titles\": [\"...\"]}}",
+      "en": "Language: English\nResearch field: {field}\nMethodology: {method}\nKeywords: {keywords}\nCore question: {core_question}\nTarget venue: {target_venue}\nUser input: {user_input}\nDoctoral draft text: {draft_text}\nReference titles (user's published English papers): {reference_titles}\nReference excerpts (from the user's published English papers): {reference_text}\n\nTask: Generate 5 rigorous dissertation title candidates grounded in the user's published paper excerpts and doctoral draft. Reflect the field and methodology, remain objective and precise, and avoid generic or fabricated claims.\nReturn JSON only: {{\"titles\": [\"...\"]}}"
     },
     "outline": {
-      "zh": "语言: 中文\n研究领域: {field}\n研究方法: {method}\n关键词: {keywords}\n核心问题: {core_question}\n用户输入: {user_input}\n参考文献摘录: {reference_text}\n\n任务: 基于参考文献摘录生成6-8个章节标题，并给出4-6条逻辑脉络说明章节之间的衔接。\n只输出JSON: {{\"sections\": [\"...\"], \"logic\": [\"...\"]}}",
-      "en": "Language: English\nResearch field: {field}\nMethodology: {method}\nKeywords: {keywords}\nCore question: {core_question}\nUser input: {user_input}\nReference excerpts: {reference_text}\n\nTask: Create 6-8 section titles and 4-6 logic bullets grounded in the reference excerpts.\nReturn JSON only: {{\"sections\": [\"...\"], \"logic\": [\"...\"]}}"
+      "zh": "语言: 中文\n研究领域: {field}\n研究方法: {method}\n关键词: {keywords}\n核心问题: {core_question}\n用户输入: {user_input}\n博士论文草稿: {draft_text}\n参考文献摘录(来自用户已发表英文论文): {reference_text}\n\n任务: 基于用户已发表英文论文的摘录与博士论文草稿生成6-8个章节标题，并给出4-6条严谨的逻辑脉络说明章节之间的衔接。章节标题需体现研究方法与研究问题。\n只输出JSON: {{\"sections\": [\"...\"], \"logic\": [\"...\"]}}",
+      "en": "Language: English\nResearch field: {field}\nMethodology: {method}\nKeywords: {keywords}\nCore question: {core_question}\nUser input: {user_input}\nDoctoral draft text: {draft_text}\nReference excerpts (from the user's published English papers): {reference_text}\n\nTask: Produce 6-8 section titles and 4-6 rigorous logic bullets grounded in the user's published paper excerpts and doctoral draft. Section titles must reflect the methodology and research question.\nReturn JSON only: {{\"sections\": [\"...\"], \"logic\": [\"...\"]}}"
     },
     "draft": {
-      "zh": "语言: 中文\n研究领域: {field}\n研究方法: {method}\n关键词: {keywords}\n用户输入: {user_input}\n草稿文本: {draft_text}\n参考文献摘录: {reference_text}\n\n任务: 根据用户输入的章节目标撰写2-3段学术段落，必须结合参考文献摘录，避免虚构结论。\n只输出JSON: {{\"draft\": \"...\"}}",
-      "en": "Language: English\nResearch field: {field}\nMethodology: {method}\nKeywords: {keywords}\nUser input: {user_input}\nDraft text: {draft_text}\nReference excerpts: {reference_text}\n\nTask: Write 2-3 academic paragraphs for the requested section grounded in the reference excerpts. Avoid fabricated claims.\nReturn JSON only: {{\"draft\": \"...\"}}"
+      "zh": "语言: 中文\n研究领域: {field}\n研究方法: {method}\n关键词: {keywords}\n用户输入: {user_input}\n博士论文草稿: {draft_text}\n参考文献摘录(来自用户已发表英文论文): {reference_text}\n\n任务: 以博士论文写作风格撰写2-3段正文，必须基于参考文献摘录与博士论文草稿，保持客观、准确、专业，避免虚构结论或不支持的断言。正文使用Markdown格式。\n只输出JSON: {{\"draft\": \"...\"}}",
+      "en": "Language: English\nResearch field: {field}\nMethodology: {method}\nKeywords: {keywords}\nUser input: {user_input}\nDoctoral draft text: {draft_text}\nReference excerpts (from the user's published English papers): {reference_text}\n\nTask: Write 2-3 paragraphs in a doctoral dissertation style, grounded in the published paper excerpts and the doctoral draft. Be objective, precise, professional, and avoid unsupported claims. Use Markdown for the prose.\nReturn JSON only: {{\"draft\": \"...\"}}"
     },
     "polish": {
-      "zh": "语言: 中文\n用户输入: {user_input}\n参考文献摘录: {reference_text}\n\n任务: 在不改变含义的前提下润色用户段落，保持学术风格，并对术语与参考文献摘录保持一致。\n只输出JSON: {{\"polished\": \"...\"}}",
-      "en": "Language: English\nUser input: {user_input}\nReference excerpts: {reference_text}\n\nTask: Polish the paragraph without changing meaning. Align terminology with the reference excerpts.\nReturn JSON only: {{\"polished\": \"...\"}}"
+      "zh": "语言: 中文\n用户输入: {user_input}\n博士论文草稿: {draft_text}\n参考文献摘录(来自用户已发表英文论文): {reference_text}\n\n任务: 在不改变含义的前提下润色用户段落，保持博士论文写作风格，确保术语与参考文献摘录一致。输出为Markdown格式。\n只输出JSON: {{\"polished\": \"...\"}}",
+      "en": "Language: English\nUser input: {user_input}\nDoctoral draft text: {draft_text}\nReference excerpts (from the user's published English papers): {reference_text}\n\nTask: Polish the paragraph without changing meaning. Maintain dissertation-level tone and align terminology with the reference excerpts. Use Markdown for the output.\nReturn JSON only: {{\"polished\": \"...\"}}"
     },
     "search": {
-      "zh": "语言: 中文\n研究领域: {field}\n关键词: {keywords}\n参考文献摘录: {reference_text}\n\n任务: 基于参考文献摘录给出5-8条检索结果摘要，包含标题、年份、来源。\n只输出JSON: {{\"results\": [{{\"title\": \"...\", \"year\": 2023, \"source\": \"...\"}}]}}",
-      "en": "Language: English\nResearch field: {field}\nKeywords: {keywords}\nReference excerpts: {reference_text}\n\nTask: Provide 5-8 search results aligned with the reference excerpts. Include title, year, and source.\nReturn JSON only: {{\"results\": [{{\"title\": \"...\", \"year\": 2023, \"source\": \"...\"}}]}}"
+      "zh": "语言: 中文\n研究领域: {field}\n关键词: {keywords}\n参考文献摘录(来自用户已发表英文论文): {reference_text}\n\n任务: 基于用户已发表英文论文的摘录，给出5-8条检索结果摘要，包含标题、年份、来源，避免虚构与参考文献无关的条目。\n只输出JSON: {{\"results\": [{{\"title\": \"...\", \"year\": 2023, \"source\": \"...\"}}]}}",
+      "en": "Language: English\nResearch field: {field}\nKeywords: {keywords}\nReference excerpts (from the user's published English papers): {reference_text}\n\nTask: Provide 5-8 search result summaries grounded in the published paper excerpts. Include title, year, and source, and avoid entries unrelated to the references.\nReturn JSON only: {{\"results\": [{{\"title\": \"...\", \"year\": 2023, \"source\": \"...\"}}]}}"
     },
     "citations": {
-      "zh": "语言: 中文\n用户输入: {user_input}\n参考文献标题: {reference_titles}\n参考文献摘录: {reference_text}\n\n任务: 基于参考文献摘录给出2-4条作者-年份式引用建议。\n只输出JSON: {{\"citationBlock\": \"...\"}}",
-      "en": "Language: English\nUser input: {user_input}\nReference titles: {reference_titles}\nReference excerpts: {reference_text}\n\nTask: Suggest 2-4 author-year citation inserts based on the reference excerpts.\nReturn JSON only: {{\"citationBlock\": \"...\"}}"
+      "zh": "语言: 中文\n用户输入: {user_input}\n参考文献标题(用户已发表英文论文): {reference_titles}\n参考文献摘录(来自用户已发表英文论文): {reference_text}\n\n任务: 基于参考文献摘录给出2-4条作者-年份式引用建议，保持客观、准确、专业。输出为Markdown格式。\n只输出JSON: {{\"citationBlock\": \"...\"}}",
+      "en": "Language: English\nUser input: {user_input}\nReference titles (user's published English papers): {reference_titles}\nReference excerpts (from the user's published English papers): {reference_text}\n\nTask: Suggest 2-4 author-year citation inserts grounded in the reference excerpts. Keep the tone objective and professional. Use Markdown for the output.\nReturn JSON only: {{\"citationBlock\": \"...\"}}"
     }
   }
 }
