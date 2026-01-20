@@ -387,6 +387,56 @@ button:hover,
   color: var(--text);
 }
 
+.output p {
+  margin: 0 0 8px;
+  line-height: 1.6;
+}
+
+.output h1,
+.output h2,
+.output h3 {
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.output h1 {
+  font-size: 18px;
+}
+
+.output h2 {
+  font-size: 16px;
+}
+
+.output h3 {
+  font-size: 15px;
+}
+
+.output ol {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.output blockquote {
+  margin: 0 0 8px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(103, 212, 240, 0.35);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.output code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  font-family: "Courier New", Courier, monospace;
+}
+
+.output pre {
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow-x: auto;
+}
+
 .output .result {
   padding: 8px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);

@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title data-i18n="pageTitleLibrary">资料库</title>
+  <title data-i18n="pageTitleLibrary">���Ͽ�</title>
   <link rel="stylesheet" href="styles.css" />
   <script>
     window.APP_CONFIG = { apiBase: "" };
@@ -19,49 +19,49 @@
 
   <header class="top-bar">
     <a class="brand" href="index.html">
-      <span class="brand-title" data-i18n="brandTitle">博士论文智研助手</span>
+      <span class="brand-title" data-i18n="brandTitle">��ʿ������������</span>
       <span class="brand-tag" data-i18n="brandTag">Research Co-Pilot</span>
     </a>
     <nav class="top-nav">
-      <a href="project.html" data-i18n="navProject">项目设置</a>
-      <a href="library.html" data-i18n="navLibrary">资料库</a>
-      <a href="topic.html" data-i18n="navTopic">题目生成</a>
-      <a href="outline.html" data-i18n="navOutline">大纲梳理</a>
-      <a href="draft.html" data-i18n="navDraft">初稿撰写</a>
-      <a href="polish.html" data-i18n="navPolish">深度润色</a>
-      <a href="search.html" data-i18n="navSearch">文献检索</a>
-      <a href="citations.html" data-i18n="navCitations">引用插入</a>
+      <a href="project.html" data-i18n="navProject">��Ŀ����</a>
+      <a href="library.html" data-i18n="navLibrary">���Ͽ�</a>
+      <a href="topic.html" data-i18n="navTopic">��Ŀ����</a>
+      <a href="outline.html" data-i18n="navOutline">�������</a>
+      <a href="draft.html" data-i18n="navDraft">����׫д</a>
+      <a href="polish.html" data-i18n="navPolish">�����ɫ</a>
+      <a href="search.html" data-i18n="navSearch">���׼���</a>
+      <a href="citations.html" data-i18n="navCitations">���ò���</a>
     </nav>
-    <button class="ghost" id="langToggle" data-i18n="langToggle">中文 / EN</button>
+    <button class="ghost" id="langToggle" data-i18n="langToggle">���� / EN</button>
   </header>
 
   <main>
     <section class="section">
       <div class="section-head">
-        <h2 data-i18n="libraryTitle">参考文献与资料库</h2>
-        <p data-i18n="librarySubtitle">上传论文、引用库与草稿文本，供题目生成与写作模块使用。</p>
+        <h2 data-i18n="libraryTitle">�ο����������Ͽ�</h2>
+        <p data-i18n="librarySubtitle">�ϴ����ġ����ÿ���ݸ��ı�������Ŀ������д��ģ��ʹ�á�</p>
       </div>
       <div class="grid two">
         <div class="card uploader">
           <div class="upload-head">
-            <h3 data-i18n="libraryPaperTitle">上传参考论文</h3>
-            <p data-i18n="libraryPaperHint">支持 PDF/DOCX/TXT。TXT 文件将提取摘要。</p>
+            <h3 data-i18n="libraryPaperTitle">�ϴ��ο�����</h3>
+            <p data-i18n="libraryPaperHint">֧�� PDF/DOCX/TXT��TXT �ļ�����ȡժҪ��</p>
           </div>
           <input id="paperUpload" type="file" multiple accept=".pdf,.docx,.txt" />
           <div id="paperList" class="file-list"></div>
         </div>
         <div class="card">
-          <h3 data-i18n="libraryCitationsTitle">文献插入（Zotero / EndNote）</h3>
-          <p class="hint" data-i18n="libraryCitationsHint">导入 .bib / .ris / .enw 文件后，系统将识别引用并生成插入建议。</p>
+          <h3 data-i18n="libraryCitationsTitle">���ײ��루Zotero / EndNote��</h3>
+          <p class="hint" data-i18n="libraryCitationsHint">���� .bib / .ris / .enw �ļ���ϵͳ��ʶ�����ò����ɲ��뽨�顣</p>
           <input id="citationUpload" type="file" accept=".bib,.ris,.enw,.txt,.xml" />
           <div id="citationStatus" class="file-list"></div>
         </div>
         <div class="card">
-          <h3 data-i18n="libraryDraftTitle">上传或粘贴论文草稿</h3>
-          <p class="hint" data-i18n="libraryDraftHint">仅用于题目生成与后续写作模块的上下文分析。</p>
+          <h3 data-i18n="libraryDraftTitle">�ϴ���ճ�����Ĳݸ�</h3>
+          <p class="hint" data-i18n="libraryDraftHint">��������Ŀ���������д��ģ��������ķ�����</p>
           <input id="draftUpload" type="file" accept=".txt" />
-          <textarea id="draftTextInput" rows="6" placeholder="粘贴你的草稿文本" data-i18n-placeholder="libraryDraftPlaceholder"></textarea>
-          <button class="primary" id="saveDraft" data-i18n="libraryDraftSave">保存草稿文本</button>
+          <textarea id="draftTextInput" rows="6" placeholder="ճ����Ĳݸ��ı�" data-i18n-placeholder="libraryDraftPlaceholder"></textarea>
+          <button class="primary" id="saveDraft" data-i18n="libraryDraftSave">����ݸ��ı�</button>
           <div id="draftStatus" class="file-list"></div>
         </div>
       </div>
@@ -69,7 +69,7 @@
   </main>
 
   <footer class="footer">
-    <p data-i18n="footerText">AI Assisted Dissertation Studio · Build research drafts iteratively.</p>
+    <p data-i18n="footerText">AI Assisted Dissertation Studio �� Build research drafts iteratively.</p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.min.js"></script>
@@ -80,6 +80,9 @@
     }
   </script>
   <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
+

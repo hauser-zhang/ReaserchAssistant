@@ -799,6 +799,7 @@ async function callApi(endpoint, payload) {
 
 function renderOutput(moduleName, container, data) {
   container.innerHTML = "";
+  container.removeAttribute("data-raw");
   if (!data) {
     container.textContent = "";
     return;
@@ -854,12 +855,36 @@ function renderOutput(moduleName, container, data) {
   }
 
   const text = data.draft || data.polished || data.citationBlock || data.message || "";
+  container.dataset.raw = text;
+  renderMarkdown(container, text);
+}
+
+function renderMarkdown(container, text) {
+  if (!container) {
+    return;
+  }
+  if (!text) {
+    container.textContent = "";
+    return;
+  }
+  if (window.marked) {
+    const html = window.marked.parse(text, { breaks: true });
+    if (window.DOMPurify) {
+      container.innerHTML = window.DOMPurify.sanitize(html);
+    } else {
+      container.innerHTML = html;
+    }
+    return;
+  }
   container.textContent = text;
 }
 
 function extractOutputText(outputEl) {
   if (!outputEl) {
     return "";
+  }
+  if (outputEl.dataset && outputEl.dataset.raw) {
+    return outputEl.dataset.raw.trim();
   }
   const listItems = outputEl.querySelectorAll("li");
   if (listItems.length) {
