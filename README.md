@@ -21,15 +21,20 @@ An AI-assisted workspace for dissertation writing and literature management. Thi
 - `topic.html`: title generation based on context + draft text
 - `outline.html`, `draft.html`, `polish.html`, `search.html`, `citations.html`: module workspaces
 
-## Run Locally
+## Run Locally (Python Backend)
 
-Install Node.js (>=16), then run:
+Install Python 3.10+ and run:
 
 ```bash
-node server.js
+python -m venv .venv
+. .venv/Scripts/activate
+pip install -r requirements.txt
+python server.py
 ```
 
 Open: `http://localhost:8787`
+
+The Python backend handles all model calls. The legacy `server.js` is now static-only and will not execute model requests.
 
 ## Model Configuration
 
@@ -39,13 +44,17 @@ On the home page, select a provider and set:
 - **API Key** (required)
 - **API Base URL** (optional; defaults are prefilled)
 
-API keys are stored in browser localStorage and are not written to the repository. The server uses the provided key to call the selected model provider at request time.
+API keys are stored in browser localStorage and are not written to the repository. The Python server uses the provided key to call the selected model provider at request time.
 
 ## Reference Text Requirement
 
-Generation modules rely on extracted reference text. Upload PDFs/DOCX/TXT in `library.html` and wait for extraction to complete before running a module. If no reference text is available, the server will return an error instead of mock output.
+Generation modules rely on extracted reference text. Upload PDFs/DOCX/TXT in `library.html` and wait for extraction to complete before running a module. If no reference text is available, the server will return an error.
 
 PDF/DOCX extraction uses browser libraries (`pdfjs-dist`, `mammoth`) loaded from CDN at runtime.
+
+## Prompt Configuration
+
+Module prompts live in `prompts/prompts.json` with Chinese and English variants. Update these templates to adjust instructions or output schemas.
 
 ### Getting API Keys
 
