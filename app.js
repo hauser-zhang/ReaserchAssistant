@@ -126,7 +126,7 @@ const i18n = {
     fieldLabel: "研究领域",
     fieldPlaceholder: "例如：智能制造、教育技术",
     methodLabel: "研究方法",
-    methodPlaceholder: "例如：实证研究、案例分析",
+    methodPlaceholder: "例如：实证研究、案例分析（用逗号分隔）",
     keywordLabel: "关键词",
     keywordPlaceholder: "请输入 3-6 个关键词，用逗号分隔",
     writingLanguageLabel: "写作语言",
@@ -138,11 +138,11 @@ const i18n = {
     audienceLabel: "目标读者 / 投稿方向",
     audiencePlaceholder: "例如：IEEE / Nature",
     projectTagsLabel: "研究标签",
-    projectStatus: "自动保存至本地。",
+    projectStatus: "本页信息保存到浏览器本地（localStorage），不会上传服务器。",
     libraryTitle: "参考文献与资料库",
     librarySubtitle: "上传论文、引用库与草稿文本，供题目生成与写作模块使用。",
     libraryPaperTitle: "上传参考论文",
-    libraryPaperHint: "支持 PDF/Word/TXT。TXT 文件将提取摘要。",
+    libraryPaperHint: "支持 PDF/DOCX/TXT。TXT 文件将提取摘要。",
     libraryCitationsTitle: "文献插入（Zotero / EndNote）",
     libraryCitationsHint: "导入 .bib / .ris / .enw 文件后，系统将识别引用并生成插入建议。",
     libraryDraftTitle: "上传或粘贴论文草稿",
@@ -193,6 +193,13 @@ const i18n = {
     statusDraftSaved: "草稿已保存到本地",
     statusWorking: "生成中...",
     statusUseDraft: "已插入草稿文本片段",
+    statusReferencePending: "正在提取文本...",
+    statusReferenceReady: "已提取文本",
+    statusReferenceEmpty: "文本为空",
+    statusReferenceUnsupported: "暂不支持该格式",
+    statusReferenceMissing: "未加载解析器",
+    errorReferenceRequired: "请先在资料库上传并提取参考论文文本。",
+    errorRequestFailed: "请求失败，请检查服务器或网络。",
     downloadTxt: "下载 TXT",
     downloadDoc: "下载 Word"
   },
@@ -264,7 +271,7 @@ const i18n = {
     fieldLabel: "Research Field",
     fieldPlaceholder: "e.g. Smart manufacturing, education tech",
     methodLabel: "Methodology",
-    methodPlaceholder: "e.g. Empirical study, case analysis",
+    methodPlaceholder: "e.g. Empirical study, case analysis (comma separated)",
     keywordLabel: "Keywords",
     keywordPlaceholder: "Enter 3-6 keywords, comma separated",
     writingLanguageLabel: "Writing Language",
@@ -276,11 +283,11 @@ const i18n = {
     audienceLabel: "Target Audience / Venue",
     audiencePlaceholder: "e.g. IEEE / Nature",
     projectTagsLabel: "Research Tags",
-    projectStatus: "Saved locally.",
+    projectStatus: "Saved in browser localStorage and never uploaded.",
     libraryTitle: "Reference Library",
     librarySubtitle: "Upload papers, citation files, and draft text for generation context.",
     libraryPaperTitle: "Upload Reference Papers",
-    libraryPaperHint: "Supports PDF/Word/TXT. TXT will extract a snippet.",
+    libraryPaperHint: "Supports PDF/DOCX/TXT. TXT will extract a snippet.",
     libraryCitationsTitle: "Citation Files (Zotero / EndNote)",
     libraryCitationsHint: "Import .bib / .ris / .enw files for citation suggestions.",
     libraryDraftTitle: "Upload or Paste Draft Text",
@@ -331,6 +338,13 @@ const i18n = {
     statusDraftSaved: "Draft saved locally",
     statusWorking: "Generating...",
     statusUseDraft: "Draft snippet inserted",
+    statusReferencePending: "Extracting text...",
+    statusReferenceReady: "Text extracted",
+    statusReferenceEmpty: "No text detected",
+    statusReferenceUnsupported: "Format not supported yet",
+    statusReferenceMissing: "Extractor not loaded",
+    errorReferenceRequired: "Upload and extract reference text in the Library first.",
+    errorRequestFailed: "Request failed. Check the server or network.",
     downloadTxt: "Download TXT",
     downloadDoc: "Download Word"
   }
@@ -640,6 +654,11 @@ function wireModuleAction(moduleName, inputEl, outputEl) {
     const model = loadModelConfig();
     const input = (inputEl.value || "").trim();
 
+    if (!hasReferenceText(library.references)) {
+      outputEl.textContent = t("errorReferenceRequired");
+      return;
+    }
+
     outputEl.textContent = t("statusWorking");
 
     const payload = {
@@ -651,8 +670,11 @@ function wireModuleAction(moduleName, inputEl, outputEl) {
     };
 
     const data = await callApi(endpoints[moduleName], payload);
-    const result = data || mockResponse(moduleName, payload);
-    renderOutput(moduleName, outputEl, result);
+    if (!data) {
+      outputEl.textContent = t("errorRequestFailed");
+      return;
+    }
+    renderOutput(moduleName, outputEl, data);
     updateSummaryPanels();
   });
 }
@@ -698,6 +720,10 @@ function renderOutput(moduleName, container, data) {
   container.innerHTML = "";
   if (!data) {
     container.textContent = "";
+    return;
+  }
+  if (data.error) {
+    container.textContent = data.error;
     return;
   }
 
@@ -958,23 +984,44 @@ function renderFileList(container, list) {
   }
   list.forEach((item) => {
     const text = `${item.name} (${formatBytes(item.size)})`;
-    const node = renderFileItem(text, item.snippet);
+    const status = getReferenceStatusText(item);
+    const node = renderFileItem(text, item.snippet, status);
     container.appendChild(node);
   });
 }
 
-function renderFileItem(title, snippet) {
+function renderFileItem(title, snippet, status) {
   const wrapper = document.createElement("div");
   wrapper.className = "file-item";
   const strong = document.createElement("div");
   strong.textContent = title;
   wrapper.appendChild(strong);
+  if (status) {
+    const small = document.createElement("p");
+    small.textContent = status;
+    wrapper.appendChild(small);
+  }
   if (snippet) {
     const small = document.createElement("p");
     small.textContent = snippet + "...";
     wrapper.appendChild(small);
   }
   return wrapper;
+}
+
+function getReferenceStatusText(reference) {
+  if (!reference || !reference.status) {
+    return "";
+  }
+  const map = {
+    pending: "statusReferencePending",
+    ready: "statusReferenceReady",
+    empty: "statusReferenceEmpty",
+    unsupported: "statusReferenceUnsupported",
+    missing: "statusReferenceMissing"
+  };
+  const key = map[reference.status];
+  return key ? t(key) : "";
 }
 
 function renderCitationStatus(library) {
@@ -1062,7 +1109,7 @@ function updateSummaryPanels() {
   const model = loadModelConfig();
 
   setText("summaryField", project.field || "-");
-  setText("summaryMethod", project.method || "-");
+  setText("summaryMethod", formatTagDisplay(project.method));
   setText("summaryKeywords", project.keywords || "-");
   setText("summaryLanguage", formatWritingLanguage(project.language));
   setText("summaryRefs", String(library.references.length || 0));
@@ -1099,7 +1146,7 @@ function updateTagList(project) {
     return;
   }
   tagList.innerHTML = "";
-  const tags = parseKeywordList(project.keywords || "");
+  const tags = mergeTags(parseKeywordList(project.keywords || ""), parseKeywordList(project.method || ""));
   if (!tags.length && project.field) {
     tags.push(project.field);
   }
@@ -1111,22 +1158,102 @@ function updateTagList(project) {
   });
 }
 
+function mergeTags(primary, secondary) {
+  const seen = new Set();
+  const result = [];
+  [...primary, ...secondary].forEach((tag) => {
+    const cleaned = String(tag || "").trim();
+    if (!cleaned || seen.has(cleaned)) {
+      return;
+    }
+    seen.add(cleaned);
+    result.push(cleaned);
+  });
+  return result;
+}
+
 function registerReference(file, library, listContainer) {
   const record = {
     name: file.name,
     size: file.size,
     type: file.type || "unknown",
-    snippet: ""
+    snippet: "",
+    content: "",
+    status: "pending"
   };
 
-  if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+  library.references.unshift(record);
+  saveLibraryState(library);
+  renderFileList(listContainer, library.references);
+  extractReferenceText(file, record, library, listContainer);
+}
+
+function extractReferenceText(file, record, library, listContainer) {
+  const name = file.name.toLowerCase();
+
+  if (file.type === "text/plain" || name.endsWith(".txt")) {
     readTextFile(file, (text) => {
-      record.snippet = sanitizeText(text).slice(0, 240);
-      renderFileList(listContainer, library.references);
+      const cleaned = sanitizeText(text);
+      updateReferenceRecord(record, library, listContainer, cleaned);
     });
+    return;
   }
 
-  library.references.unshift(record);
+  if (name.endsWith(".pdf")) {
+    if (!window.pdfjsLib) {
+      setReferenceStatus(record, library, listContainer, "missing");
+      return;
+    }
+    readArrayBuffer(file, async (buffer) => {
+      try {
+        const doc = await window.pdfjsLib.getDocument({ data: buffer }).promise;
+        let output = "";
+        for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
+          const page = await doc.getPage(pageIndex);
+          const content = await page.getTextContent();
+          const pageText = content.items.map((item) => item.str).join(" ");
+          output += ` ${pageText}`;
+        }
+        updateReferenceRecord(record, library, listContainer, output);
+      } catch (error) {
+        setReferenceStatus(record, library, listContainer, "empty");
+      }
+    });
+    return;
+  }
+
+  if (name.endsWith(".docx")) {
+    if (!window.mammoth) {
+      setReferenceStatus(record, library, listContainer, "missing");
+      return;
+    }
+    readArrayBuffer(file, async (buffer) => {
+      try {
+        const result = await window.mammoth.extractRawText({ arrayBuffer: buffer });
+        updateReferenceRecord(record, library, listContainer, result.value || "");
+      } catch (error) {
+        setReferenceStatus(record, library, listContainer, "empty");
+      }
+    });
+    return;
+  }
+
+  setReferenceStatus(record, library, listContainer, "unsupported");
+}
+
+function updateReferenceRecord(record, library, listContainer, text) {
+  const cleaned = sanitizeText(text).slice(0, 12000);
+  record.content = cleaned;
+  record.snippet = cleaned.slice(0, 240);
+  record.status = cleaned ? "ready" : "empty";
+  saveLibraryState(library);
+  renderFileList(listContainer, library.references);
+  updateSummaryPanels();
+}
+
+function setReferenceStatus(record, library, listContainer, status) {
+  record.status = status;
+  saveLibraryState(library);
   renderFileList(listContainer, library.references);
 }
 
@@ -1141,8 +1268,21 @@ function readTextFile(file, onLoad) {
 function summarizeReferences(references) {
   return (references || []).slice(0, 6).map((ref) => ({
     name: ref.name,
-    size: ref.size
+    size: ref.size,
+    content: (ref.content || "").slice(0, 2000)
   }));
+}
+
+function hasReferenceText(references) {
+  return (references || []).some((ref) => String(ref.content || "").trim().length > 30);
+}
+
+function readArrayBuffer(file, onLoad) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    onLoad(reader.result);
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function buildModelLabel(model) {
@@ -1159,6 +1299,17 @@ function formatWritingLanguage(language) {
     return t("writingLangMix");
   }
   return t("writingLangZh");
+}
+
+function formatTagDisplay(value) {
+  if (!value) {
+    return "-";
+  }
+  const items = parseKeywordList(value);
+  if (!items.length) {
+    return String(value).trim();
+  }
+  return items.join(" / ");
 }
 
 function loadProjectProfile() {

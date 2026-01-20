@@ -45,9 +45,9 @@
         <div class="card uploader">
           <div class="upload-head">
             <h3 data-i18n="libraryPaperTitle">上传参考论文</h3>
-            <p data-i18n="libraryPaperHint">支持 PDF/Word/TXT。TXT 文件将提取摘要。</p>
+            <p data-i18n="libraryPaperHint">支持 PDF/DOCX/TXT。TXT 文件将提取摘要。</p>
           </div>
-          <input id="paperUpload" type="file" multiple />
+          <input id="paperUpload" type="file" multiple accept=".pdf,.docx,.txt" />
           <div id="paperList" class="file-list"></div>
         </div>
         <div class="card">
@@ -72,6 +72,14 @@
     <p data-i18n="footerText">AI Assisted Dissertation Studio · Build research drafts iteratively.</p>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.worker.min.js";
+    }
+  </script>
+  <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

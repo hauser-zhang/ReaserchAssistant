@@ -6,6 +6,7 @@ An AI-assisted workspace for dissertation writing and literature management. Thi
 
 - Research-style UI with dedicated pages per module
 - Upload English/Chinese papers as references
+- Extract reference text from PDF/DOCX/TXT in the Library
 - Title generation, outline planning, drafting, polishing, literature search, citation insertion
 - Zotero / EndNote citation file intake (BibTeX / RIS / ENW)
 - Chinese/English UI toggle
@@ -39,6 +40,12 @@ On the home page, select a provider and set:
 - **API Base URL** (optional; defaults are prefilled)
 
 API keys are stored in browser localStorage and are not written to the repository. The server uses the provided key to call the selected model provider at request time.
+
+## Reference Text Requirement
+
+Generation modules rely on extracted reference text. Upload PDFs/DOCX/TXT in `library.html` and wait for extraction to complete before running a module. If no reference text is available, the server will return an error instead of mock output.
+
+PDF/DOCX extraction uses browser libraries (`pdfjs-dist`, `mammoth`) loaded from CDN at runtime.
 
 ### Getting API Keys
 

@@ -132,38 +132,32 @@ function json(res, status, payload) {
 
 async function handleTopic(data) {
   const context = parseContext(data);
-  const generated = await generateWithModel("topic", data, context);
-  return generated || buildTopicMock(context);
+  return generateWithModel("topic", data, context);
 }
 
 async function handleOutline(data) {
   const context = parseContext(data);
-  const generated = await generateWithModel("outline", data, context);
-  return generated || buildOutlineMock(context);
+  return generateWithModel("outline", data, context);
 }
 
 async function handleDraft(data) {
   const context = parseContext(data);
-  const generated = await generateWithModel("draft", data, context);
-  return generated || buildDraftMock(context);
+  return generateWithModel("draft", data, context);
 }
 
 async function handlePolish(data) {
   const context = parseContext(data);
-  const generated = await generateWithModel("polish", data, context);
-  return generated || buildPolishMock(context);
+  return generateWithModel("polish", data, context);
 }
 
 async function handleSearch(data) {
   const context = parseContext(data);
-  const generated = await generateWithModel("search", data, context);
-  return generated || buildSearchMock(context);
+  return generateWithModel("search", data, context);
 }
 
 async function handleCitations(data) {
   const context = parseContext(data);
-  const generated = await generateWithModel("citations", data, context);
-  return generated || buildCitationsMock(context);
+  return generateWithModel("citations", data, context);
 }
 
 function parseContext(data) {
@@ -176,6 +170,7 @@ function parseContext(data) {
   const keywordList = parseKeywordList(project.keywords || "");
   const keywordText = keywordList.join(" / ");
   const focus = keywordText || extractSnippet(input || draftText, isZh) || (isZh ? "关键主题" : "core topics");
+  const referenceText = buildReferenceText(references, 5000);
 
   return {
     project,
@@ -186,6 +181,7 @@ function parseContext(data) {
     keywordList,
     keywords: keywordText,
     focus,
+    referenceText,
     field: project.field || (isZh ? "研究领域" : "the field"),
     method: project.method || (isZh ? "研究方法" : "methodological")
   };
@@ -216,23 +212,71 @@ function extractSnippet(text, isZh) {
   return cleaned.split(/\s+/).slice(0, 6).join(" ");
 }
 
+function buildReferenceText(references, maxLength) {
+  if (!references || !references.length) {
+    return "";
+  }
+  const chunks = [];
+  let total = 0;
+  references.forEach((ref) => {
+    const content = String(ref.content || "").replace(/\s+/g, " ").trim();
+    if (!content) {
+      return;
+    }
+    const label = ref.name ? `Source: ${ref.name}\n` : "";
+    const snippet = content.slice(0, 1200);
+    const block = `${label}${snippet}`;
+    if (total + block.length > maxLength) {
+      const remaining = maxLength - total;
+      if (remaining > 80) {
+        chunks.push(block.slice(0, remaining));
+      }
+      total = maxLength;
+      return;
+    }
+    chunks.push(block);
+    total += block.length;
+  });
+  return chunks.join("\n\n");
+}
+
+function buildError(context, zhMessage, enMessage) {
+  return { error: context.isZh ? zhMessage : enMessage };
+}
+
 async function generateWithModel(moduleName, data, context) {
   const model = normalizeModel(data.model || {});
   if (!model.apiKey || !model.model) {
-    return null;
+    return buildError(
+      context,
+      "请先在首页配置 API Key 与模型 ID。",
+      "Please configure the API key and model ID on the home page."
+    );
+  }
+
+  if (!context.referenceText) {
+    return buildError(
+      context,
+      "未检测到参考论文文本，请在资料库上传并完成文本提取。",
+      "No reference text detected. Upload and extract reference papers in the Library."
+    );
   }
 
   const prompt = buildPrompt(moduleName, data, context);
   if (!prompt) {
-    return null;
+    return buildError(context, "提示词生成失败。", "Failed to build the prompt.");
   }
 
   try {
     const text = await callProvider(model, prompt);
     const parsed = parseJsonPayload(text);
-    return normalizeModuleResponse(moduleName, parsed);
+    const normalized = normalizeModuleResponse(moduleName, parsed);
+    if (!normalized) {
+      return buildError(context, "模型返回格式不正确。", "The model returned invalid JSON.");
+    }
+    return normalized;
   } catch (error) {
-    return null;
+    return buildError(context, "模型调用失败，请检查 API Key。", "Model call failed. Check your API key.");
   }
 }
 
@@ -346,6 +390,7 @@ function buildPrompt(moduleName, data, context) {
     .map((ref) => ref.name)
     .filter(Boolean)
     .join("; ");
+  const referenceText = limitText(context.referenceText, 3500);
 
   const header = [
     `Language: ${writingLanguage}`,
@@ -356,31 +401,32 @@ function buildPrompt(moduleName, data, context) {
     `Target venue: ${context.project.audience || "-"}`,
     `User input: ${userInput || "-"}`,
     `Draft text: ${draftText || "-"}`,
-    `Reference titles: ${referenceNames || "-"}`
+    `Reference titles: ${referenceNames || "-"}`,
+    `Reference excerpts: ${referenceText || "-"}`
   ].join("\n");
 
   if (moduleName === "topic") {
-    return `${header}\n\nTask: Generate 5 distinct dissertation title candidates. Use the draft text and user input when available. Keep titles concise and academic.\nReturn JSON with this schema: {"titles": ["..."]}.`;
+    return `${header}\n\nTask: Generate 5 distinct dissertation title candidates. Use the reference excerpts as primary evidence and incorporate draft text/user input when available. Keep titles concise and academic.\nReturn JSON with this schema: {"titles": ["..."]}.`;
   }
 
   if (moduleName === "outline") {
-    return `${header}\n\nTask: Create a structured dissertation outline with 6-8 section titles and 4-6 logic points that explain the flow.\nReturn JSON with this schema: {"sections": ["..."], "logic": ["..."]}.`;
+    return `${header}\n\nTask: Create a structured dissertation outline with 6-8 section titles and 4-6 logic points based on the reference excerpts.\nReturn JSON with this schema: {"sections": ["..."], "logic": ["..."]}.`;
   }
 
   if (moduleName === "draft") {
-    return `${header}\n\nTask: Write 2-3 academic paragraphs for the requested section. Keep the style formal and coherent.\nReturn JSON with this schema: {"draft": "..."}.`;
+    return `${header}\n\nTask: Write 2-3 academic paragraphs for the requested section grounded in the reference excerpts. Keep the style formal and coherent.\nReturn JSON with this schema: {"draft": "..."}.`;
   }
 
   if (moduleName === "polish") {
-    return `${header}\n\nTask: Polish the provided paragraph to improve academic tone and clarity without changing meaning.\nReturn JSON with this schema: {"polished": "..."}.`;
+    return `${header}\n\nTask: Polish the provided paragraph to improve academic tone and clarity without changing meaning. Use reference excerpts only to align terminology.\nReturn JSON with this schema: {"polished": "..."}.`;
   }
 
   if (moduleName === "search") {
-    return `${header}\n\nTask: Provide 5-8 literature search results with plausible titles, years, and sources.\nReturn JSON with this schema: {"results": [{"title": "...", "year": 2023, "source": "..."}]}.`;
+    return `${header}\n\nTask: Provide 5-8 literature search results aligned with the reference excerpts, with plausible titles, years, and sources.\nReturn JSON with this schema: {"results": [{"title": "...", "year": 2023, "source": "..."}]}.`;
   }
 
   if (moduleName === "citations") {
-    return `${header}\n\nTask: Suggest 2-4 citations based on the reference titles. Use author-year style placeholders if needed.\nReturn JSON with this schema: {"citationBlock": "..."}.`;
+    return `${header}\n\nTask: Suggest 2-4 citations based on the reference excerpts and titles. Use author-year style placeholders if needed.\nReturn JSON with this schema: {"citationBlock": "..."}.`;
   }
 
   return "";
@@ -480,99 +526,6 @@ function normalizeModuleResponse(moduleName, payload) {
   }
 
   return null;
-}
-
-function buildTopicMock(context) {
-  const focus = context.focus;
-  return {
-    titles: context.isZh
-      ? [
-          `基于${focus}的${context.field}博士论文题目探析`,
-          `${context.field}中${focus}的理论与实践研究`,
-          `面向${context.field}的${focus}机制构建与验证`,
-          `${context.method}视角下${focus}的系统研究`,
-          `${focus}驱动的${context.field}创新路径研究`
-        ]
-      : [
-          `A ${context.method} Study on ${focus} in ${context.field}`,
-          `${focus}: A Framework for ${context.field} Innovation`,
-          `Understanding ${focus} Dynamics within ${context.field}`,
-          `${context.field} Transformation Through ${focus}`,
-          `Evidence-Based Insights on ${focus} in ${context.field}`
-        ]
-  };
-}
-
-function buildOutlineMock(context) {
-  return {
-    sections: context.isZh
-      ? ["引言", "文献综述", "研究设计", "数据与方法", "结果与讨论", "结论与展望"]
-      : ["Introduction", "Literature Review", "Research Design", "Data & Methods", "Results & Discussion", "Conclusion"],
-    logic: context.isZh
-      ? [
-          "从研究背景切入，定义问题与研究目标",
-          "梳理关键文献并定位研究空白",
-          "构建理论与方法框架",
-          "验证假设并输出关键发现",
-          "总结贡献与未来研究方向"
-        ]
-      : [
-          "Frame the research gap and objectives",
-          "Review and synthesize core literature",
-          "Present the theoretical and methodological framework",
-          "Validate hypotheses and discuss findings",
-          "Summarize contributions and future work"
-        ]
-  };
-}
-
-function buildDraftMock(context) {
-  const focus = context.focus;
-  const draft = context.isZh
-    ? `本节围绕${focus}展开，首先阐明研究动机与理论背景，并指出${context.field}中的关键挑战。随后结合${context.method}提出研究框架，形成可验证的研究命题。\n\n通过对核心变量的分析，初步发现${focus}在${context.field}场景中呈现出显著的结构性特征，为后续实证验证奠定基础。`
-    : `This section focuses on ${focus}. It outlines the motivation and theoretical background, highlighting the key challenges in ${context.field}. A ${context.method} framework is proposed to shape testable propositions.\n\nPreliminary analysis suggests that ${focus} exhibit distinctive structural patterns in ${context.field}, setting the stage for empirical validation.`;
-  return { draft };
-}
-
-function buildPolishMock(context) {
-  const input = String(context.input || "").trim();
-  const polished = context.isZh
-    ? `润色建议：${input || "请输入需要润色的内容"}（已统一术语、优化逻辑衔接、提升学术表达）`
-    : `Polished draft: ${input || "Provide the paragraph to polish."} (terminology aligned, flow improved, academic tone enhanced)`;
-  return { polished };
-}
-
-function buildSearchMock(context) {
-  const focus = context.focus;
-  return {
-    results: [
-      {
-        title: context.isZh ? `${focus}的最新研究综述` : `Recent Advances on ${focus}`,
-        year: 2023,
-        source: "Journal of Research Insights"
-      },
-      {
-        title: context.isZh ? `${context.field}中的${focus}模型构建` : `${focus} Modeling in ${context.field}`,
-        year: 2022,
-        source: "International Review"
-      },
-      {
-        title: context.isZh ? `${focus}的实证检验` : `Empirical Evidence of ${focus}`,
-        year: 2021,
-        source: "Academic Reports"
-      }
-    ]
-  };
-}
-
-function buildCitationsMock(context) {
-  const references = context.references || [];
-  const first = references[0]?.name || "Smith et al. (2023)";
-  const second = references[1]?.name || "Li & Zhao (2022)";
-  const citationBlock = context.isZh
-    ? `建议引用：${first}；${second}`
-    : `Suggested citations: ${first}; ${second}`;
-  return { citationBlock };
 }
 
 server.listen(PORT, () => {

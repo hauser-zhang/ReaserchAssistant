@@ -323,6 +323,21 @@ button:hover,
   font-family: "Space Grotesk", sans-serif;
 }
 
+.card input[type="file"] {
+  color: transparent;
+  cursor: pointer;
+}
+
+.card input[type="file"]::file-selector-button {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-family: "Space Grotesk", sans-serif;
+  cursor: pointer;
+}
+
 .card textarea {
   resize: vertical;
 }
