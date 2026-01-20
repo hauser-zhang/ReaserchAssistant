@@ -192,7 +192,9 @@ const i18n = {
     statusDraftReady: "已加载草稿文本",
     statusDraftSaved: "草稿已保存到本地",
     statusWorking: "生成中...",
-    statusUseDraft: "已插入草稿文本片段"
+    statusUseDraft: "已插入草稿文本片段",
+    downloadTxt: "下载 TXT",
+    downloadDoc: "下载 Word"
   },
   en: {
     pageTitleHome: "Dissertation Research Assistant",
@@ -328,7 +330,9 @@ const i18n = {
     statusDraftReady: "Draft text loaded",
     statusDraftSaved: "Draft saved locally",
     statusWorking: "Generating...",
-    statusUseDraft: "Draft snippet inserted"
+    statusUseDraft: "Draft snippet inserted",
+    downloadTxt: "Download TXT",
+    downloadDoc: "Download Word"
   }
 };
 
@@ -434,6 +438,7 @@ function initPage() {
   if (page === "module") {
     initModulePage();
   }
+  wireDownloadButtons();
   updateSummaryPanels();
 }
 
@@ -652,6 +657,24 @@ function wireModuleAction(moduleName, inputEl, outputEl) {
   });
 }
 
+function wireDownloadButtons() {
+  document.querySelectorAll("[data-download]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const moduleCard = button.closest(".module");
+      const output = moduleCard ? moduleCard.querySelector("[data-output]") : null;
+      if (!output) {
+        return;
+      }
+      const content = extractOutputText(output);
+      if (!content) {
+        return;
+      }
+      const moduleName = moduleCard.dataset.module || document.body.dataset.module || "module";
+      downloadText(content, moduleName, button.dataset.download);
+    });
+  });
+}
+
 async function callApi(endpoint, payload) {
   if (!endpoint) {
     return null;
@@ -725,6 +748,54 @@ function renderOutput(moduleName, container, data) {
 
   const text = data.draft || data.polished || data.citationBlock || data.message || "";
   container.textContent = text;
+}
+
+function extractOutputText(outputEl) {
+  if (!outputEl) {
+    return "";
+  }
+  const listItems = outputEl.querySelectorAll("li");
+  if (listItems.length) {
+    return Array.from(listItems).map((item) => item.textContent.trim()).join("\n");
+  }
+  const results = outputEl.querySelectorAll(".result");
+  if (results.length) {
+    return Array.from(results).map((item) => item.textContent.trim()).join("\n");
+  }
+  return outputEl.textContent.trim();
+}
+
+function downloadText(text, moduleName, format) {
+  const safeName = moduleName || "module";
+  const date = new Date().toISOString().slice(0, 10);
+  const extension = format === "doc" ? "doc" : "txt";
+  const filename = `${safeName}-${date}.${extension}`;
+  let blob;
+
+  if (format === "doc") {
+    const html = `<!doctype html><html><head><meta charset="utf-8"></head><body><pre>${escapeHtml(
+      text
+    )}</pre></body></html>`;
+    blob = new Blob([html], { type: "application/msword" });
+  } else {
+    blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 function mockResponse(moduleName, payload) {
   const isZh = isChineseMode(payload);

@@ -42,11 +42,15 @@
         <p data-i18n="polishSubtitle">粘贴段落并生成学术化润色版本。</p>
       </div>
       <div class="grid two">
-        <div class="card module">
+        <div class="card module" data-module="polish">
           <label for="polishInput" data-i18n="polishInputLabel">待润色文本</label>
           <textarea id="polishInput" rows="6" data-input placeholder="粘贴需要润色的段落" data-i18n-placeholder="polishInputPlaceholder"></textarea>
           <button class="primary" data-action="polish" data-i18n="polishGenerate">开始润色</button>
           <div class="output" data-output></div>
+          <div class="download-actions">
+            <button class="ghost" data-download="txt" data-i18n="downloadTxt">下载 TXT</button>
+            <button class="ghost" data-download="doc" data-i18n="downloadDoc">下载 Word</button>
+          </div>
         </div>
         <div class="card">
           <h3 data-i18n="moduleContextTitle">上下文</h3>

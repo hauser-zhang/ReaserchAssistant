@@ -42,11 +42,15 @@
         <p data-i18n="searchSubtitle">输入关键词，生成检索结果概览。</p>
       </div>
       <div class="grid two">
-        <div class="card module">
+        <div class="card module" data-module="search">
           <label for="searchInput" data-i18n="searchInputLabel">检索关键词</label>
           <textarea id="searchInput" rows="5" data-input placeholder="输入检索关键词或研究主题" data-i18n-placeholder="searchInputPlaceholder"></textarea>
           <button class="primary" data-action="search" data-i18n="searchGenerate">检索文献</button>
           <div class="output" data-output></div>
+          <div class="download-actions">
+            <button class="ghost" data-download="txt" data-i18n="downloadTxt">下载 TXT</button>
+            <button class="ghost" data-download="doc" data-i18n="downloadDoc">下载 Word</button>
+          </div>
         </div>
         <div class="card">
           <h3 data-i18n="moduleContextTitle">上下文</h3>

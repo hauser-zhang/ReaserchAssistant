@@ -10,6 +10,7 @@ An AI-assisted workspace for dissertation writing and literature management. Thi
 - Zotero / EndNote citation file intake (BibTeX / RIS / ENW)
 - Chinese/English UI toggle
 - Model provider selection (GPT 5.1, Gemini, DeepSeek) with local API configuration
+- Module outputs downloadable as TXT or Word-compatible DOC
 
 ## Pages
 
@@ -37,7 +38,7 @@ On the home page, select a provider and set:
 - **API Key** (required)
 - **API Base URL** (optional; defaults are prefilled)
 
-API keys are stored in browser localStorage and are not written to the repository.
+API keys are stored in browser localStorage and are not written to the repository. The server uses the provided key to call the selected model provider at request time.
 
 ### Getting API Keys
 

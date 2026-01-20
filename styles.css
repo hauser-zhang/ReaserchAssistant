@@ -342,6 +342,16 @@ button:hover,
   flex: 1;
 }
 
+.download-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.download-actions button {
+  flex: 1;
+}
+
 .output {
   margin-top: 12px;
   padding: 12px;

@@ -42,11 +42,15 @@
         <p data-i18n="outlineSubtitle">输入研究问题或章节目标，输出结构化大纲。</p>
       </div>
       <div class="grid two">
-        <div class="card module">
+        <div class="card module" data-module="outline">
           <label for="outlineInput" data-i18n="outlineInputLabel">输入研究问题</label>
           <textarea id="outlineInput" rows="6" data-input placeholder="输入研究问题或期望的章节结构" data-i18n-placeholder="outlineInputPlaceholder"></textarea>
           <button class="primary" data-action="outline" data-i18n="outlineGenerate">生成大纲</button>
           <div class="output" data-output></div>
+          <div class="download-actions">
+            <button class="ghost" data-download="txt" data-i18n="downloadTxt">下载 TXT</button>
+            <button class="ghost" data-download="doc" data-i18n="downloadDoc">下载 Word</button>
+          </div>
         </div>
         <div class="card">
           <h3 data-i18n="moduleContextTitle">上下文</h3>

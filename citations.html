@@ -42,11 +42,15 @@
         <p data-i18n="citationsSubtitle">输入段落，结合引用库生成插入建议。</p>
       </div>
       <div class="grid two">
-        <div class="card module">
+        <div class="card module" data-module="citations">
           <label for="citationsInput" data-i18n="citationsInputLabel">上下文段落</label>
           <textarea id="citationsInput" rows="5" data-input placeholder="输入需要插入引用的段落" data-i18n-placeholder="citationsInputPlaceholder"></textarea>
           <button class="primary" data-action="citations" data-i18n="citationsGenerate">生成引用</button>
           <div class="output" data-output></div>
+          <div class="download-actions">
+            <button class="ghost" data-download="txt" data-i18n="downloadTxt">下载 TXT</button>
+            <button class="ghost" data-download="doc" data-i18n="downloadDoc">下载 Word</button>
+          </div>
         </div>
         <div class="card">
           <h3 data-i18n="moduleContextTitle">上下文</h3>
