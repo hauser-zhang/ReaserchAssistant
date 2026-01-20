@@ -328,7 +328,7 @@ button:hover,
 }
 
 .card input[type="file"] {
-  color: transparent;
+  color: var(--text);
   cursor: pointer;
 }
 

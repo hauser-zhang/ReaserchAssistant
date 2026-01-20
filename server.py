@@ -21,6 +21,8 @@ except ImportError:  # pragma: no cover - optional dependency
 
 ROOT = Path(__file__).resolve().parent
 PROMPT_PATH = ROOT / "prompts" / "prompts.json"
+DATA_DIR = ROOT / "data"
+LIBRARY_STORE = DATA_DIR / "library_store.json"
 
 app = FastAPI()
 
@@ -32,6 +34,52 @@ def load_prompt_config() -> Dict[str, Any]:
 
 PROMPTS = load_prompt_config()
 
+
+def store_library(payload: Dict[str, Any]) -> None:
+    data = sanitize_library_payload(payload)
+    if not data:
+        return
+    DATA_DIR.mkdir(exist_ok=True)
+    LIBRARY_STORE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def load_library_store() -> Dict[str, Any]:
+    if not LIBRARY_STORE.exists():
+        return {}
+    try:
+        return json.loads(LIBRARY_STORE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+
+
+def sanitize_library_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    references = payload.get("references") if isinstance(payload.get("references"), list) else []
+    cleaned_refs = []
+    for ref in references:
+        if not isinstance(ref, dict):
+            continue
+        cleaned_refs.append(
+            {
+                "name": str(ref.get("name") or ""),
+                "content": limit_text(str(ref.get("content") or ""), 4000),
+                "sectionText": limit_text(str(ref.get("sectionText") or ""), 6000),
+                "sections": clip_sections(ref.get("sections") if isinstance(ref.get("sections"), dict) else {}),
+            }
+        )
+    return {
+        "references": cleaned_refs,
+        "draftText": limit_text(str(payload.get("draftText") or ""), 6000),
+        "draftSectionText": limit_text(str(payload.get("draftSectionText") or ""), 6000),
+    }
+
+
+def clip_sections(sections: Dict[str, Any]) -> Dict[str, str]:
+    clipped: Dict[str, str] = {}
+    for key, value in sections.items():
+        cleaned = limit_text(str(value or ""), 1800)
+        if cleaned:
+            clipped[str(key)] = cleaned
+    return clipped
 
 @app.post("/api/topic")
 def api_topic(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
@@ -61,6 +109,11 @@ def api_search(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
 @app.post("/api/insert-refs")
 def api_citations(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     return handle_module("citations", payload)
+
+@app.post("/api/library/sync")
+def api_library_sync(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    store_library(payload)
+    return {"ok": True}
 
 @app.post("/api/models")
 def api_models(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
@@ -110,6 +163,9 @@ def build_context(payload: Dict[str, Any]) -> Dict[str, Any]:
     input_text = str(payload.get("input") or "")
     draft_text = str(payload.get("draftText") or "")
     references = payload.get("references") if isinstance(payload.get("references"), list) else []
+    stored = load_library_store()
+    stored_refs = stored.get("references") if isinstance(stored.get("references"), list) else []
+    references = merge_reference_data(references, stored_refs)
 
     is_zh = project.get("language") == "zh" or bool(re.search(r"[\u4e00-\u9fff]", input_text + draft_text))
     language_key = "zh" if is_zh else "en"
@@ -117,7 +173,9 @@ def build_context(payload: Dict[str, Any]) -> Dict[str, Any]:
     methods = parse_list(project.get("method", ""))
 
     reference_text = build_reference_text(references, 5000)
+    reference_sections = build_reference_sections(references, 6000)
     reference_titles = "; ".join([ref.get("name", "") for ref in references if ref.get("name")])
+    draft_section_text = str(payload.get("draftSectionText") or stored.get("draftSectionText") or "")
 
     model_cfg = normalize_model(payload.get("model") or {})
 
@@ -134,6 +192,8 @@ def build_context(payload: Dict[str, Any]) -> Dict[str, Any]:
         "draft_text": limit_text(draft_text, 2000),
         "reference_titles": reference_titles or "-",
         "reference_text": limit_text(reference_text, 3500),
+        "reference_sections": limit_text(reference_sections, 4500),
+        "draft_section_text": limit_text(draft_section_text, 2000),
         "system_prompt": PROMPTS.get("system", {}).get(language_key, ""),
         "model": model_cfg,
     }
@@ -317,6 +377,63 @@ def build_reference_text(references: List[Dict[str, Any]], max_length: int) -> s
     return "\n\n".join(chunks)
 
 
+def build_reference_sections(references: List[Dict[str, Any]], max_length: int) -> str:
+    chunks: List[str] = []
+    total = 0
+    for ref in references:
+        section_text = str(ref.get("sectionText") or "").strip()
+        if not section_text:
+            section_text = format_sections(ref.get("sections") if isinstance(ref.get("sections"), dict) else {})
+        if not section_text:
+            continue
+        label = f"Source: {ref.get('name')}\n" if ref.get("name") else ""
+        snippet = re.sub(r"\s+", " ", section_text)[:2000]
+        block = f"{label}{snippet}"
+        if total + len(block) > max_length:
+            remaining = max_length - total
+            if remaining > 80:
+                chunks.append(block[:remaining])
+            break
+        chunks.append(block)
+        total += len(block)
+    return "\n\n".join(chunks)
+
+
+def format_sections(sections: Dict[str, Any]) -> str:
+    if not sections:
+        return ""
+    ordered = ["abstract", "introduction", "methods", "results", "discussion", "conclusion", "other"]
+    lines: List[str] = []
+    for key in ordered:
+        value = str(sections.get(key) or "").strip()
+        if not value:
+            continue
+        label = key.title()
+        lines.append(f"{label}: {value}")
+    return "\n".join(lines)
+
+
+def merge_reference_data(
+    primary: List[Dict[str, Any]], secondary: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    if not secondary:
+        return primary
+    primary_map = {ref.get("name"): ref for ref in primary if ref.get("name")}
+    secondary_map = {ref.get("name"): ref for ref in secondary if ref.get("name")}
+    merged: List[Dict[str, Any]] = []
+    for ref in primary:
+        name = ref.get("name")
+        if name and name in secondary_map:
+            merged.append({**secondary_map[name], **ref})
+        else:
+            merged.append(ref)
+    for ref in secondary:
+        name = ref.get("name")
+        if name and name not in primary_map:
+            merged.append(ref)
+    return merged
+
+
 def parse_list(text: str) -> List[str]:
     if not text:
         return []
@@ -336,4 +453,4 @@ def build_error(context: Dict[str, Any], zh_message: str, en_message: str) -> Di
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=9931, reload=False)
+    uvicorn.run("server:app", host="0.0.0.0", port=9933, reload=False)

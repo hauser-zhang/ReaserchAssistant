@@ -59,7 +59,7 @@
         <div class="card">
           <h3 data-i18n="libraryDraftTitle">上传或粘贴论文草稿</h3>
           <p class="hint" data-i18n="libraryDraftHint">仅用于题目生成与后续写作模块的上下文分析。</p>
-          <input id="draftUpload" type="file" accept=".txt" />
+          <input id="draftUpload" type="file" accept=".pdf,.docx,.txt" />
           <textarea id="draftTextInput" rows="6" placeholder="粘贴你的草稿文本" data-i18n-placeholder="libraryDraftPlaceholder"></textarea>
           <button class="primary" id="saveDraft" data-i18n="libraryDraftSave">保存草稿文本</button>
           <div id="draftStatus" class="file-list"></div>
@@ -86,5 +86,6 @@
   <script src="app.js"></script>
 </body>
 </html>
+
 
 

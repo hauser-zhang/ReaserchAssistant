@@ -36,7 +36,9 @@ const defaultProject = {
 const defaultLibrary = {
   references: [],
   citationFile: null,
-  draftText: ""
+  draftText: "",
+  draftFile: null,
+  draftSectionText: ""
 };
 
 const defaultModel = {
@@ -150,7 +152,7 @@ const i18n = {
     libraryCitationsTitle: "文献插入（Zotero / EndNote）",
     libraryCitationsHint: "导入 .bib / .ris / .enw 文件后，系统将识别引用并生成插入建议。",
     libraryDraftTitle: "上传或粘贴博士论文草稿",
-    libraryDraftHint: "用于与已发表论文对齐的博士论文写作上下文。",
+    libraryDraftHint: "支持 PDF/DOCX/TXT，用于与已发表论文对齐的博士论文写作上下文。",
     libraryDraftPlaceholder: "粘贴博士论文草稿文本",
     libraryDraftSave: "保存草稿文本",
     topicTitle: "毕业论文题目生成",
@@ -299,7 +301,7 @@ const i18n = {
     libraryCitationsTitle: "Citation Files (Zotero / EndNote)",
     libraryCitationsHint: "Import .bib / .ris / .enw files for citation suggestions.",
     libraryDraftTitle: "Upload or Paste Doctoral Thesis Draft",
-    libraryDraftHint: "Used as dissertation writing context aligned with your published papers.",
+    libraryDraftHint: "Supports PDF/DOCX/TXT as dissertation context aligned with your published papers.",
     libraryDraftPlaceholder: "Paste your doctoral draft text",
     libraryDraftSave: "Save draft text",
     topicTitle: "Dissertation Title Generator",
@@ -602,6 +604,8 @@ function initLibrary() {
     }
     saveLibraryState(library);
     renderCitationStatus(library);
+    updateSummaryPanels();
+    syncLibraryState(library);
   });
 
   draftUpload.addEventListener("change", () => {
@@ -609,22 +613,20 @@ function initLibrary() {
     if (!file) {
       return;
     }
-    readTextFile(file, (text) => {
-      const cleaned = sanitizeText(text);
-      library.draftText = cleaned.slice(0, 4000);
-      draftTextInput.value = cleaned.slice(0, 2000);
-      saveLibraryState(library);
-      renderDraftStatus(library);
-      updateSummaryPanels();
-    });
+    extractDraftText(file, library, draftTextInput);
   });
 
   saveDraft.addEventListener("click", () => {
-    const text = sanitizeText(draftTextInput.value || "");
+    const normalized = normalizeTextWithLines(draftTextInput.value || "");
+    const text = sanitizeText(normalized);
+    const structured = extractStructuredSections(normalized);
     library.draftText = text.slice(0, 4000);
+    library.draftSectionText = structured.sectionText.slice(0, 3500);
+    library.draftFile = null;
     saveLibraryState(library);
     renderDraftStatus(library, t("statusDraftSaved"));
     updateSummaryPanels();
+    syncLibraryState(library);
   });
 }
 
@@ -736,6 +738,7 @@ function wireModuleAction(moduleName, inputEl, outputEl) {
     const payload = {
       input,
       draftText: library.draftText,
+      draftSectionText: library.draftSectionText,
       project,
       references: summarizeReferences(library.references),
       model
@@ -1247,6 +1250,163 @@ function buildDraftSnippet(text) {
 function sanitizeText(text) {
   return String(text || "").replace(/\s+/g, " ").trim();
 }
+
+function normalizeTextWithLines(text) {
+  return String(text || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function extractStructuredSections(text) {
+  const normalized = normalizeTextWithLines(text);
+  if (!normalized) {
+    return { sections: {}, resultsSubsections: [], sectionText: "" };
+  }
+  const lines = normalized.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const sections = {
+    abstract: "",
+    introduction: "",
+    methods: "",
+    results: "",
+    discussion: "",
+    conclusion: "",
+    other: ""
+  };
+  let current = "other";
+  lines.forEach((line) => {
+    const heading = matchSectionHeading(line);
+    if (heading) {
+      current = heading.key;
+      if (heading.remainder) {
+        sections[current] = appendLine(sections[current], heading.remainder);
+      }
+      return;
+    }
+    if (current === "references") {
+      return;
+    }
+    sections[current] = appendLine(sections[current], line);
+  });
+  const resultsSubsections = splitResultSubsections(sections.results);
+  const sectionText = buildSectionText(sections, resultsSubsections);
+  return {
+    sections,
+    resultsSubsections,
+    sectionText
+  };
+}
+
+function appendLine(existing, line) {
+  return existing ? `${existing}\n${line}` : line;
+}
+
+function matchSectionHeading(line) {
+  const cleaned = line.replace(/^[\d.\s]+/, "").trim();
+  if (!cleaned) {
+    return null;
+  }
+  const normalized = cleaned.replace(/\s+/g, " ").trim();
+  if (normalized.length > 160) {
+    return null;
+  }
+  const lowered = normalized.toLowerCase();
+  const blacklist = ["showed that", "demonstrated", "results of", "results showed", "results demonstrated"];
+  if (blacklist.some((token) => lowered.includes(token))) {
+    return null;
+  }
+
+  const patterns = [
+    { key: "abstract", label: "Abstract", values: ["abstract"] },
+    { key: "introduction", label: "Introduction", values: ["introduction", "background", "related work", "literature review"] },
+    { key: "methods", label: "Methods", values: ["materials and methods", "methodology", "methods", "experimental methods", "experimental"] },
+    { key: "results", label: "Results", values: ["results and discussion", "results"] },
+    { key: "discussion", label: "Discussion", values: ["discussion"] },
+    { key: "conclusion", label: "Conclusion", values: ["conclusion", "conclusions", "concluding remarks"] },
+    { key: "references", label: "References", values: ["references", "bibliography", "acknowledgements", "acknowledgments"] }
+  ];
+
+  for (const entry of patterns) {
+    for (const value of entry.values) {
+      const regex = new RegExp(`^${escapeRegex(value)}\\b\\s*[:\\-–—]*\\s*(.*)$`, "i");
+      const match = normalized.match(regex);
+      if (match) {
+        const remainder = (match[1] || "").trim();
+        if (remainder && entry.key !== "abstract") {
+          const hasSeparator = /[:\\-–—]/.test(normalized);
+          const wordCount = remainder.split(/\s+/).length;
+          if (!hasSeparator && wordCount > 6) {
+            return null;
+          }
+        }
+        return { key: entry.key, label: entry.label, remainder };
+      }
+    }
+  }
+  return null;
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function splitResultSubsections(text) {
+  const lines = String(text || "").split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) {
+    return [];
+  }
+  const sections = [];
+  let current = null;
+  lines.forEach((line) => {
+    const match = line.match(/^(\d+(?:\.\d+)+)\s+(.+)$/);
+    const shortTitle = line.length <= 80 && !/[.!?]$/.test(line) && line.split(/\s+/).length <= 10;
+    if (match || shortTitle) {
+      if (current) {
+        sections.push(current);
+      }
+      current = {
+        title: match ? match[0].trim() : line,
+        text: ""
+      };
+      return;
+    }
+    if (!current) {
+      current = { title: "Results", text: "" };
+    }
+    current.text = current.text ? `${current.text} ${line}` : line;
+  });
+  if (current) {
+    sections.push(current);
+  }
+  return sections.filter((item) => item.text || item.title);
+}
+
+function buildSectionText(sections, resultsSubsections) {
+  const blocks = [];
+  const add = (label, value) => {
+    const cleaned = sanitizeText(value || "");
+    if (!cleaned) {
+      return;
+    }
+    blocks.push(`${label}: ${cleaned}`);
+  };
+  add("Abstract", sections.abstract);
+  add("Introduction", sections.introduction);
+  add("Methods", sections.methods);
+  if (resultsSubsections && resultsSubsections.length) {
+    resultsSubsections.forEach((item) => {
+      const label = item.title ? `Results - ${item.title}` : "Results";
+      add(label, item.text || "");
+    });
+  } else {
+    add("Results", sections.results);
+  }
+  add("Discussion", sections.discussion);
+  add("Conclusion", sections.conclusion);
+  add("Other", sections.other);
+  return blocks.join("\n\n");
+}
 function renderFileList(container, list) {
   if (!container) {
     return;
@@ -1321,6 +1481,12 @@ function renderDraftStatus(library, message) {
   status.innerHTML = "";
   if (!library.draftText) {
     status.appendChild(renderFileItem(t("statusDraftEmpty")));
+    return;
+  }
+  if (library.draftFile) {
+    status.appendChild(
+      renderFileItem(`${library.draftFile.name} (${formatBytes(library.draftFile.size)})`)
+    );
     return;
   }
   const label = message || t("statusDraftReady");
@@ -1446,6 +1612,55 @@ function mergeTags(primary, secondary) {
   return result;
 }
 
+function extractFileText(file, onSuccess, onError) {
+  const name = (file.name || "").toLowerCase();
+  if (file.type === "text/plain" || name.endsWith(".txt")) {
+    readTextFile(file, (text) => onSuccess(text));
+    return;
+  }
+
+  if (name.endsWith(".pdf")) {
+    if (!window.pdfjsLib) {
+      onError("missing");
+      return;
+    }
+    readArrayBuffer(file, async (buffer) => {
+      try {
+        const doc = await window.pdfjsLib.getDocument({ data: buffer }).promise;
+        let output = "";
+        for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
+          const page = await doc.getPage(pageIndex);
+          const content = await page.getTextContent();
+          const pageText = content.items.map((item) => item.str).join(" ");
+          output += `\n${pageText}`;
+        }
+        onSuccess(output);
+      } catch (error) {
+        onError("empty");
+      }
+    });
+    return;
+  }
+
+  if (name.endsWith(".docx")) {
+    if (!window.mammoth) {
+      onError("missing");
+      return;
+    }
+    readArrayBuffer(file, async (buffer) => {
+      try {
+        const result = await window.mammoth.extractRawText({ arrayBuffer: buffer });
+        onSuccess(result.value || "");
+      } catch (error) {
+        onError("empty");
+      }
+    });
+    return;
+  }
+
+  onError("unsupported");
+}
+
 function registerReference(file, library, listContainer) {
   const record = {
     name: file.name,
@@ -1463,66 +1678,54 @@ function registerReference(file, library, listContainer) {
 }
 
 function extractReferenceText(file, record, library, listContainer) {
-  const name = file.name.toLowerCase();
+  extractFileText(file, (text) => {
+    updateReferenceRecord(record, library, listContainer, text);
+  }, (status) => {
+    setReferenceStatus(record, library, listContainer, status);
+  });
+}
 
-  if (file.type === "text/plain" || name.endsWith(".txt")) {
-    readTextFile(file, (text) => {
-      const cleaned = sanitizeText(text);
-      updateReferenceRecord(record, library, listContainer, cleaned);
-    });
-    return;
-  }
-
-  if (name.endsWith(".pdf")) {
-    if (!window.pdfjsLib) {
-      setReferenceStatus(record, library, listContainer, "missing");
-      return;
-    }
-    readArrayBuffer(file, async (buffer) => {
-      try {
-        const doc = await window.pdfjsLib.getDocument({ data: buffer }).promise;
-        let output = "";
-        for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
-          const page = await doc.getPage(pageIndex);
-          const content = await page.getTextContent();
-          const pageText = content.items.map((item) => item.str).join(" ");
-          output += ` ${pageText}`;
-        }
-        updateReferenceRecord(record, library, listContainer, output);
-      } catch (error) {
-        setReferenceStatus(record, library, listContainer, "empty");
-      }
-    });
-    return;
-  }
-
-  if (name.endsWith(".docx")) {
-    if (!window.mammoth) {
-      setReferenceStatus(record, library, listContainer, "missing");
-      return;
-    }
-    readArrayBuffer(file, async (buffer) => {
-      try {
-        const result = await window.mammoth.extractRawText({ arrayBuffer: buffer });
-        updateReferenceRecord(record, library, listContainer, result.value || "");
-      } catch (error) {
-        setReferenceStatus(record, library, listContainer, "empty");
-      }
-    });
-    return;
-  }
-
-  setReferenceStatus(record, library, listContainer, "unsupported");
+function extractDraftText(file, library, draftTextInput) {
+  extractFileText(file, (text) => {
+    const normalized = normalizeTextWithLines(text);
+    const cleaned = sanitizeText(normalized);
+    const structured = extractStructuredSections(normalized);
+    library.draftText = cleaned.slice(0, 4000);
+    library.draftFile = { name: file.name, size: file.size };
+    library.draftSectionText = structured.sectionText.slice(0, 3500);
+    draftTextInput.value = cleaned.slice(0, 2000);
+    saveLibraryState(library);
+    renderDraftStatus(library);
+    updateSummaryPanels();
+    syncLibraryState(library);
+  }, (status) => {
+    library.draftText = "";
+    library.draftFile = null;
+    library.draftSectionText = "";
+    saveLibraryState(library);
+    const map = {
+      missing: "statusReferenceMissing",
+      unsupported: "statusReferenceUnsupported",
+      empty: "statusReferenceEmpty"
+    };
+    const message = map[status] ? t(map[status]) : t("statusDraftEmpty");
+    renderDraftStatus(library, message);
+  });
 }
 
 function updateReferenceRecord(record, library, listContainer, text) {
-  const cleaned = sanitizeText(text).slice(0, 12000);
+  const normalized = normalizeTextWithLines(text);
+  const cleaned = sanitizeText(normalized).slice(0, 12000);
+  const structured = extractStructuredSections(normalized);
   record.content = cleaned;
+  record.sections = structured.sections;
+  record.sectionText = structured.sectionText.slice(0, 5000);
   record.snippet = cleaned.slice(0, 240);
   record.status = cleaned ? "ready" : "empty";
   saveLibraryState(library);
   renderFileList(listContainer, library.references);
   updateSummaryPanels();
+  syncLibraryState(library);
 }
 
 function setReferenceStatus(record, library, listContainer, status) {
@@ -1539,12 +1742,45 @@ function readTextFile(file, onLoad) {
   reader.readAsText(file);
 }
 
+function truncateText(text, maxLength) {
+  const cleaned = String(text || "");
+  if (!cleaned) {
+    return "";
+  }
+  return cleaned.length <= maxLength ? cleaned : `${cleaned.slice(0, maxLength)}...`;
+}
+
+function clipSections(sections) {
+  const result = {};
+  Object.keys(sections || {}).forEach((key) => {
+    const value = truncateText(sections[key] || "", 1200);
+    if (value) {
+      result[key] = value;
+    }
+  });
+  return Object.keys(result).length ? result : null;
+}
+
 function summarizeReferences(references) {
   return (references || []).slice(0, 6).map((ref) => ({
     name: ref.name,
     size: ref.size,
-    content: (ref.content || "").slice(0, 2000)
+    content: truncateText(ref.content || "", 2000),
+    sectionText: truncateText(ref.sectionText || "", 3500),
+    sections: clipSections(ref.sections || {})
   }));
+}
+
+function syncLibraryState(library) {
+  if (!library) {
+    return;
+  }
+  const payload = {
+    references: summarizeReferences(library.references),
+    draftText: library.draftText || "",
+    draftSectionText: library.draftSectionText || ""
+  };
+  callApi("/api/library/sync", payload);
 }
 
 function hasReferenceText(references) {
