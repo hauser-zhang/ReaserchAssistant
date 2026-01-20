@@ -1,0 +1,66 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="pageTitleCitations">引用插入</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script>
+    window.APP_CONFIG = { apiBase: "" };
+  </script>
+</head>
+<body data-page="module" data-module="citations">
+  <div class="background">
+    <div class="grid"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <header class="top-bar">
+    <a class="brand" href="index.html">
+      <span class="brand-title" data-i18n="brandTitle">博士论文智研助手</span>
+      <span class="brand-tag" data-i18n="brandTag">Research Co-Pilot</span>
+    </a>
+    <nav class="top-nav">
+      <a href="project.html" data-i18n="navProject">项目设置</a>
+      <a href="library.html" data-i18n="navLibrary">资料库</a>
+      <a href="topic.html" data-i18n="navTopic">题目生成</a>
+      <a href="outline.html" data-i18n="navOutline">大纲梳理</a>
+      <a href="draft.html" data-i18n="navDraft">初稿撰写</a>
+      <a href="polish.html" data-i18n="navPolish">深度润色</a>
+      <a href="search.html" data-i18n="navSearch">文献检索</a>
+      <a href="citations.html" data-i18n="navCitations">引用插入</a>
+    </nav>
+    <button class="ghost" id="langToggle" data-i18n="langToggle">中文 / EN</button>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="section-head">
+        <h2 data-i18n="citationsTitle">文献插入建议</h2>
+        <p data-i18n="citationsSubtitle">输入段落，结合引用库生成插入建议。</p>
+      </div>
+      <div class="grid two">
+        <div class="card module">
+          <label for="citationsInput" data-i18n="citationsInputLabel">上下文段落</label>
+          <textarea id="citationsInput" rows="5" data-input placeholder="输入需要插入引用的段落" data-i18n-placeholder="citationsInputPlaceholder"></textarea>
+          <button class="primary" data-action="citations" data-i18n="citationsGenerate">生成引用</button>
+          <div class="output" data-output></div>
+        </div>
+        <div class="card">
+          <h3 data-i18n="moduleContextTitle">上下文</h3>
+          <p class="hint" data-i18n="moduleContextHint">自动使用项目设置与资料库内容作为生成依据。</p>
+          <div class="context-list" id="moduleContext"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p data-i18n="footerText">AI Assisted Dissertation Studio · Build research drafts iteratively.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

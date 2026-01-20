@@ -1,0 +1,85 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="pageTitleProject">项目设置</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script>
+    window.APP_CONFIG = { apiBase: "" };
+  </script>
+</head>
+<body data-page="project">
+  <div class="background">
+    <div class="grid"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <header class="top-bar">
+    <a class="brand" href="index.html">
+      <span class="brand-title" data-i18n="brandTitle">博士论文智研助手</span>
+      <span class="brand-tag" data-i18n="brandTag">Research Co-Pilot</span>
+    </a>
+    <nav class="top-nav">
+      <a href="project.html" data-i18n="navProject">项目设置</a>
+      <a href="library.html" data-i18n="navLibrary">资料库</a>
+      <a href="topic.html" data-i18n="navTopic">题目生成</a>
+      <a href="outline.html" data-i18n="navOutline">大纲梳理</a>
+      <a href="draft.html" data-i18n="navDraft">初稿撰写</a>
+      <a href="polish.html" data-i18n="navPolish">深度润色</a>
+      <a href="search.html" data-i18n="navSearch">文献检索</a>
+      <a href="citations.html" data-i18n="navCitations">引用插入</a>
+    </nav>
+    <button class="ghost" id="langToggle" data-i18n="langToggle">中文 / EN</button>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="section-head">
+        <h2 data-i18n="projectTitle">项目蓝图</h2>
+        <p data-i18n="projectSubtitle">填写研究领域、方法与核心问题，为后续模块提供上下文。</p>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <label for="fieldInput" data-i18n="fieldLabel">研究领域</label>
+          <input id="fieldInput" type="text" placeholder="例如：智能制造、教育技术" data-i18n-placeholder="fieldPlaceholder" />
+
+          <label for="methodInput" data-i18n="methodLabel">研究方法</label>
+          <input id="methodInput" type="text" placeholder="例如：实证研究、案例分析" data-i18n-placeholder="methodPlaceholder" />
+
+          <label for="keywordInput" data-i18n="keywordLabel">关键词</label>
+          <input id="keywordInput" type="text" placeholder="请输入 3-6 个关键词，用逗号分隔" data-i18n-placeholder="keywordPlaceholder" />
+
+          <label for="writingLanguage" data-i18n="writingLanguageLabel">写作语言</label>
+          <select id="writingLanguage">
+            <option value="zh" data-i18n="writingLangZh">中文</option>
+            <option value="en" data-i18n="writingLangEn">English</option>
+            <option value="mix" data-i18n="writingLangMix">中英混合</option>
+          </select>
+        </div>
+        <div class="card">
+          <label for="researchInput" data-i18n="researchLabel">核心研究问题</label>
+          <textarea id="researchInput" rows="6" placeholder="描述核心研究问题、动机与创新点。" data-i18n-placeholder="researchPlaceholder"></textarea>
+
+          <label for="audienceInput" data-i18n="audienceLabel">目标读者 / 投稿方向</label>
+          <input id="audienceInput" type="text" placeholder="例如：IEEE / Nature" data-i18n-placeholder="audiencePlaceholder" />
+
+          <div class="project-summary">
+            <p class="label" data-i18n="projectTagsLabel">研究标签</p>
+            <div id="tagList" class="tag-list"></div>
+          </div>
+          <p class="hint" id="projectStatus" data-i18n="projectStatus">自动保存至本地。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p data-i18n="footerText">AI Assisted Dissertation Studio · Build research drafts iteratively.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

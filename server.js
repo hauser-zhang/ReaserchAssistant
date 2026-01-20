@@ -108,21 +108,22 @@ function json(res, status, payload) {
 }
 
 function handleTopic(data) {
-  const { isZh, keywords, field, method } = parseContext(data);
-  const titles = isZh
+  const context = parseContext(data);
+  const focus = context.focus;
+  const titles = context.isZh
     ? [
-        `基于${keywords}的${field}博士论文题目探析`,
-        `${field}中${keywords}的理论与实践研究`,
-        `面向${field}的${keywords}机制构建与验证`,
-        `${method}视角下${keywords}的系统研究`,
-        `${keywords}驱动的${field}创新路径研究`
+        `基于${focus}的${context.field}博士论文题目探析`,
+        `${context.field}中${focus}的理论与实践研究`,
+        `面向${context.field}的${focus}机制构建与验证`,
+        `${context.method}视角下${focus}的系统研究`,
+        `${focus}驱动的${context.field}创新路径研究`
       ]
     : [
-        `A ${method} Study on ${keywords} in ${field}`,
-        `${keywords}: A Framework for ${field} Innovation`,
-        `Understanding ${keywords} Dynamics within ${field}`,
-        `${field} Transformation Through ${keywords}`,
-        `Evidence-Based Insights on ${keywords} in ${field}`
+        `A ${context.method} Study on ${focus} in ${context.field}`,
+        `${focus}: A Framework for ${context.field} Innovation`,
+        `Understanding ${focus} Dynamics within ${context.field}`,
+        `${context.field} Transformation Through ${focus}`,
+        `Evidence-Based Insights on ${focus} in ${context.field}`
       ];
   return { titles };
 }
@@ -152,10 +153,10 @@ function handleOutline(data) {
 }
 
 function handleDraft(data) {
-  const { isZh, keywords, field, method } = parseContext(data);
-  const draft = isZh
-    ? `本节围绕${keywords}展开，首先阐明研究动机与理论背景，并指出${field}中的关键挑战。随后结合${method}提出研究框架，形成可验证的研究命题。\n\n通过对核心变量的分析，初步发现${keywords}在${field}场景中呈现出显著的结构性特征，为后续实证验证奠定基础。`
-    : `This section focuses on ${keywords}. It outlines the motivation and theoretical background, highlighting the key challenges in ${field}. A ${method} framework is proposed to shape testable propositions.\n\nPreliminary analysis suggests that ${keywords} exhibit distinctive structural patterns in ${field}, setting the stage for empirical validation.`;
+  const context = parseContext(data);
+  const draft = context.isZh
+    ? `本节围绕${context.focus}展开，首先阐明研究动机与理论背景，并指出${context.field}中的关键挑战。随后结合${context.method}提出研究框架，形成可验证的研究命题。\n\n通过对核心变量的分析，初步发现${context.focus}在${context.field}场景中呈现出显著的结构性特征，为后续实证验证奠定基础。`
+    : `This section focuses on ${context.focus}. It outlines the motivation and theoretical background, highlighting the key challenges in ${context.field}. A ${context.method} framework is proposed to shape testable propositions.\n\nPreliminary analysis suggests that ${context.focus} exhibit distinctive structural patterns in ${context.field}, setting the stage for empirical validation.`;
   return { draft };
 }
 
@@ -169,21 +170,21 @@ function handlePolish(data) {
 }
 
 function handleSearch(data) {
-  const { isZh, keywords, field } = parseContext(data);
+  const context = parseContext(data);
   return {
     results: [
       {
-        title: isZh ? `${keywords}的最新研究综述` : `Recent Advances on ${keywords}`,
+        title: context.isZh ? `${context.focus}的最新研究综述` : `Recent Advances on ${context.focus}`,
         year: 2023,
         source: "Journal of Research Insights"
       },
       {
-        title: isZh ? `${field}中的${keywords}模型构建` : `${keywords} Modeling in ${field}`,
+        title: context.isZh ? `${context.field}中的${context.focus}模型构建` : `${context.focus} Modeling in ${context.field}`,
         year: 2022,
         source: "International Review"
       },
       {
-        title: isZh ? `${keywords}的实证检验` : `Empirical Evidence of ${keywords}`,
+        title: context.isZh ? `${context.focus}的实证检验` : `Empirical Evidence of ${context.focus}`,
         year: 2021,
         source: "Academic Reports"
       }
@@ -205,12 +206,14 @@ function handleCitations(data) {
 function parseContext(data) {
   const project = data.project || {};
   const input = String(data.input || "");
+  const draftText = String(data.draftText || "");
   const language = String(project.language || "");
-  const isZh = language === "zh" || /[\u4e00-\u9fff]/.test(input);
-  const keywords = parseKeywords(project.keywords || input) || (isZh ? "关键主题" : "core topics");
+  const isZh = language === "zh" || /[\u4e00-\u9fff]/.test(input + draftText);
+  const keywords = parseKeywords(project.keywords || "") || parseKeywords(input) || parseKeywords(draftText);
+  const focus = keywords || extractSnippet(input || draftText, isZh) || (isZh ? "关键主题" : "core topics");
   return {
     isZh,
-    keywords,
+    focus,
     field: project.field || (isZh ? "研究领域" : "the field"),
     method: project.method || (isZh ? "研究方法" : "methodological")
   };
@@ -224,7 +227,21 @@ function parseKeywords(text) {
     .split(/[，,]/)
     .map((item) => item.trim())
     .filter(Boolean);
-  return parts.length ? parts.slice(0, 3).join(" / ") : String(text).slice(0, 18);
+  if (parts.length) {
+    return parts.slice(0, 3).join(" / ");
+  }
+  return "";
+}
+
+function extractSnippet(text, isZh) {
+  if (!text) {
+    return "";
+  }
+  const cleaned = String(text).replace(/\s+/g, " ").trim();
+  if (isZh) {
+    return cleaned.replace(/\s+/g, "").slice(0, 16);
+  }
+  return cleaned.split(/\s+/).slice(0, 6).join(" ");
 }
 
 server.listen(PORT, () => {
