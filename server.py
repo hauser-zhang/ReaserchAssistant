@@ -174,8 +174,8 @@ def list_models(payload: Dict[str, Any]) -> Dict[str, Any]:
         if model_cfg["provider"] == "gemini":
             return list_gemini_models(model_cfg)
         return list_openai_models(model_cfg)
-    except Exception:
-        return {"models": [], "error": "Failed to list models"}
+    except Exception as exc:
+        return {"models": [], "error": f"{type(exc).__name__}: {exc}"}
 
 
 def list_openai_models(model: Dict[str, Any]) -> Dict[str, Any]:

@@ -639,7 +639,8 @@ async function refreshModelList(modelConfig, modelSelect, modelId, statusEl) {
   const response = await callApi("/api/models", { model: modelConfig });
   if (!response || response.error) {
     setModelInputMode(false, modelSelect, modelId);
-    statusEl.textContent = t("modelListError");
+    const suffix = response && response.error ? ` ${response.error}` : "";
+    statusEl.textContent = `${t("modelListError")}${suffix}`;
     return;
   }
 
