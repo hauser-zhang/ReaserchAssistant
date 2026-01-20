@@ -751,8 +751,8 @@ function wireModuleAction(moduleName, inputEl, outputEl) {
 
     const payload = {
       input,
-      draftText: trimText(library.draftText || "", 6000),
-      draftSectionText: trimText(library.draftSectionText || "", 6000),
+      draftText: trimText(library.draftText || "", 12000),
+      draftSectionText: trimText(library.draftSectionText || "", 10000),
       project,
       references: summarizeReferences(library.references),
       model

@@ -211,8 +211,8 @@ def build_context(payload: Dict[str, Any]) -> Dict[str, Any]:
     keywords = parse_list(project.get("keywords", ""))
     methods = parse_list(project.get("method", ""))
 
-    reference_text = build_reference_text(references, 5000)
-    reference_sections = build_reference_sections(references, 6000)
+    reference_text = build_reference_text(references, 12000)
+    reference_sections = build_reference_sections(references, 16000)
     reference_titles = "; ".join([ref.get("name", "") for ref in references if ref.get("name")])
     stored_draft = str(stored.get("draftText") or "")
     if stored_draft and len(stored_draft) > len(draft_text):
@@ -234,11 +234,11 @@ def build_context(payload: Dict[str, Any]) -> Dict[str, Any]:
         "core_question": project.get("research") or "-",
         "target_venue": project.get("audience") or "-",
         "user_input": limit_text(input_text, 1200),
-        "draft_text": limit_text(draft_text, 2000),
+        "draft_text": limit_text(draft_text, 12000),
         "reference_titles": reference_titles or "-",
-        "reference_text": limit_text(reference_text, 3500),
-        "reference_sections": limit_text(reference_sections, 4500),
-        "draft_section_text": limit_text(draft_section_text, 2000),
+        "reference_text": limit_text(reference_text, 8000),
+        "reference_sections": limit_text(reference_sections, 12000),
+        "draft_section_text": limit_text(draft_section_text, 6000),
         "system_prompt": PROMPTS.get("system", {}).get(language_key, ""),
         "model": model_cfg,
     }
@@ -513,4 +513,4 @@ def build_error(context: Dict[str, Any], zh_message: str, en_message: str) -> Di
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=9931, reload=False)
+    uvicorn.run("server:app", host="0.0.0.0", port=9935, reload=False)
