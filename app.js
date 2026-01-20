@@ -205,7 +205,7 @@ const i18n = {
     errorReferenceRequired: "请先在资料库上传并提取参考论文文本。",
     errorRequestFailed: "请求失败，请检查服务器或网络。",
     downloadTxt: "下载 TXT",
-    downloadDoc: "下载 Word"
+    downloadDoc: "下载 DOCX"
   },
   en: {
     pageTitleHome: "Dissertation Research Assistant",
@@ -354,7 +354,7 @@ const i18n = {
     errorReferenceRequired: "Upload and extract reference text in the Library first.",
     errorRequestFailed: "Request failed. Check the server or network.",
     downloadTxt: "Download TXT",
-    downloadDoc: "Download Word"
+    downloadDoc: "Download DOCX"
   }
 };
 
@@ -897,22 +897,190 @@ function extractOutputText(outputEl) {
   return outputEl.textContent.trim();
 }
 
-function downloadText(text, moduleName, format) {
+async function downloadText(text, moduleName, format) {
   const safeName = moduleName || "module";
   const date = new Date().toISOString().slice(0, 10);
-  const extension = format === "doc" ? "doc" : "txt";
+  const extension = format === "docx" ? "docx" : format === "doc" ? "doc" : "txt";
   const filename = `${safeName}-${date}.${extension}`;
-  let blob;
 
-  if (format === "doc") {
-    const html = `<!doctype html><html><head><meta charset="utf-8"></head><body><pre>${escapeHtml(
-      text
-    )}</pre></body></html>`;
-    blob = new Blob([html], { type: "application/msword" });
-  } else {
-    blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  if (format === "docx") {
+    await downloadDocx(text, filename);
+    return;
   }
 
+  if (format === "doc") {
+    const html = `<!doctype html><html><head><meta charset="utf-8"></head><body>${renderMarkdownHtml(
+      text
+    )}</body></html>`;
+    const blob = new Blob([html], { type: "application/msword" });
+    triggerDownload(blob, filename);
+    return;
+  }
+
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  triggerDownload(blob, filename);
+}
+
+async function downloadDocx(text, filename) {
+  if (!window.docx || !window.docx.Packer) {
+    const fallbackName = filename.replace(/\.docx$/i, ".doc");
+    const html = `<!doctype html><html><head><meta charset="utf-8"></head><body>${renderMarkdownHtml(
+      text
+    )}</body></html>`;
+    const blob = new Blob([html], { type: "application/msword" });
+    triggerDownload(blob, fallbackName);
+    return;
+  }
+
+  try {
+    const doc = buildDocxDocument(text);
+    const blob = await window.docx.Packer.toBlob(doc);
+    triggerDownload(blob, filename);
+  } catch (error) {
+    const fallbackName = filename.replace(/\.docx$/i, ".doc");
+    const html = `<!doctype html><html><head><meta charset="utf-8"></head><body>${renderMarkdownHtml(
+      text
+    )}</body></html>`;
+    const blob = new Blob([html], { type: "application/msword" });
+    triggerDownload(blob, fallbackName);
+  }
+}
+
+function buildDocxDocument(text) {
+  const {
+    Document,
+    Paragraph,
+    TextRun,
+    HeadingLevel,
+    AlignmentType,
+    NumberFormat
+  } = window.docx;
+
+  const tokens = window.marked ? window.marked.lexer(text || "") : [];
+  const paragraphs = buildDocxParagraphs(tokens, text, Paragraph, TextRun, HeadingLevel);
+
+  return new Document({
+    numbering: {
+      config: [
+        {
+          reference: "numbered",
+          levels: [
+            {
+              level: 0,
+              format: NumberFormat.DECIMAL,
+              text: "%1.",
+              alignment: AlignmentType.LEFT
+            }
+          ]
+        }
+      ]
+    },
+    sections: [
+      {
+        properties: {},
+        children: paragraphs.length ? paragraphs : [new Paragraph(text || "")]
+      }
+    ]
+  });
+}
+
+function buildDocxParagraphs(tokens, text, Paragraph, TextRun, HeadingLevel) {
+  if (!tokens || !tokens.length) {
+    return splitDocxParagraphs(text, Paragraph, TextRun);
+  }
+
+  const paragraphs = [];
+  tokens.forEach((token) => {
+    if (token.type === "heading") {
+      paragraphs.push(
+        new Paragraph({
+          text: token.text || "",
+          heading: resolveHeadingLevel(token.depth, HeadingLevel)
+        })
+      );
+      return;
+    }
+
+    if (token.type === "paragraph") {
+      splitDocxParagraphs(token.text || "", Paragraph, TextRun).forEach((para) => paragraphs.push(para));
+      return;
+    }
+
+    if (token.type === "list") {
+      token.items.forEach((item) => {
+        const itemText = String(item.text || "").trim();
+        if (!itemText) {
+          return;
+        }
+        if (token.ordered) {
+          paragraphs.push(
+            new Paragraph({
+              text: itemText,
+              numbering: { reference: "numbered", level: 0 }
+            })
+          );
+        } else {
+          paragraphs.push(new Paragraph({ text: itemText, bullet: { level: 0 } }));
+        }
+      });
+      return;
+    }
+
+    if (token.type === "blockquote") {
+      const quoteText = String(token.text || "").trim();
+      if (quoteText) {
+        paragraphs.push(
+          new Paragraph({
+            children: [new TextRun({ text: quoteText, italics: true })]
+          })
+        );
+      }
+      return;
+    }
+
+    if (token.type === "code") {
+      const codeText = String(token.text || "").trim();
+      if (codeText) {
+        paragraphs.push(
+          new Paragraph({
+            children: [new TextRun({ text: codeText, font: "Courier New" })]
+          })
+        );
+      }
+    }
+  });
+
+  return paragraphs;
+}
+
+function splitDocxParagraphs(text, Paragraph, TextRun) {
+  return String(text || "")
+    .split(/\n+/)
+    .filter((line) => line.trim())
+    .map((line) => new Paragraph({ children: [new TextRun(line.trim())] }));
+}
+
+function resolveHeadingLevel(depth, HeadingLevel) {
+  if (depth === 1) {
+    return HeadingLevel.HEADING_1;
+  }
+  if (depth === 2) {
+    return HeadingLevel.HEADING_2;
+  }
+  if (depth === 3) {
+    return HeadingLevel.HEADING_3;
+  }
+  return HeadingLevel.HEADING_4;
+}
+
+function renderMarkdownHtml(text) {
+  if (window.marked) {
+    return window.marked.parse(text || "", { breaks: true });
+  }
+  return `<pre>${escapeHtml(text || "")}</pre>`;
+}
+
+function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
