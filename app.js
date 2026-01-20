@@ -99,6 +99,10 @@ const i18n = {
     modelApiKeyLabel: "API Key",
     modelBaseUrlLabel: "API Base URL (可选)",
     modelApiHint: "API Key 将仅保存在浏览器本地存储，不会写入仓库。",
+    modelListLoading: "正在获取模型列表...",
+    modelListReady: "已加载模型列表，请选择。",
+    modelListEmpty: "未获取到模型列表，将使用手动输入。",
+    modelListError: "模型列表获取失败，将使用手动输入。",
     modelIdPlaceholder: "例如：gpt-5.1",
     modelApiKeyPlaceholder: "例如：sk-...",
     modelBaseUrlPlaceholder: "例如：https://api.openai.com/v1",
@@ -244,6 +248,10 @@ const i18n = {
     modelApiKeyLabel: "API Key",
     modelBaseUrlLabel: "API Base URL (optional)",
     modelApiHint: "API keys are stored locally in your browser only.",
+    modelListLoading: "Loading model list...",
+    modelListReady: "Model list loaded. Please select.",
+    modelListEmpty: "No model list available. Using manual input.",
+    modelListError: "Failed to load model list. Using manual input.",
     modelIdPlaceholder: "e.g. gpt-5.1",
     modelApiKeyPlaceholder: "e.g. sk-...",
     modelBaseUrlPlaceholder: "e.g. https://api.openai.com/v1",
@@ -459,11 +467,13 @@ function initPage() {
 function initHome() {
   const modelConfig = loadModelConfig();
   const providerSelect = document.querySelector("#modelProvider");
+  const modelSelect = document.querySelector("#modelSelect");
   const modelId = document.querySelector("#modelId");
   const apiKey = document.querySelector("#apiKey");
   const baseUrl = document.querySelector("#baseUrl");
+  const modelStatus = document.querySelector("#modelListStatus");
 
-  if (!providerSelect || !modelId || !apiKey || !baseUrl) {
+  if (!providerSelect || !modelId || !apiKey || !baseUrl || !modelSelect || !modelStatus) {
     return;
   }
 
@@ -482,6 +492,7 @@ function initHome() {
       baseUrl.value = preset.baseUrl;
     }
     saveModelConfig(modelConfig);
+    refreshModelList(modelConfig, modelSelect, modelId, modelStatus);
     updateSummaryPanels();
   });
 
@@ -494,13 +505,24 @@ function initHome() {
   apiKey.addEventListener("input", () => {
     modelConfig.apiKey = apiKey.value.trim();
     saveModelConfig(modelConfig);
+    refreshModelList(modelConfig, modelSelect, modelId, modelStatus);
     updateSummaryPanels();
   });
 
   baseUrl.addEventListener("input", () => {
     modelConfig.baseUrl = baseUrl.value.trim();
     saveModelConfig(modelConfig);
+    refreshModelList(modelConfig, modelSelect, modelId, modelStatus);
   });
+
+  modelSelect.addEventListener("change", () => {
+    modelConfig.model = modelSelect.value;
+    modelId.value = modelSelect.value;
+    saveModelConfig(modelConfig);
+    updateSummaryPanels();
+  });
+
+  refreshModelList(modelConfig, modelSelect, modelId, modelStatus);
 }
 
 function initProject() {
@@ -604,6 +626,55 @@ function initLibrary() {
     renderDraftStatus(library, t("statusDraftSaved"));
     updateSummaryPanels();
   });
+}
+
+async function refreshModelList(modelConfig, modelSelect, modelId, statusEl) {
+  if (!modelConfig.apiKey) {
+    setModelInputMode(false, modelSelect, modelId);
+    statusEl.textContent = "";
+    return;
+  }
+
+  statusEl.textContent = t("modelListLoading");
+  const response = await callApi("/api/models", { model: modelConfig });
+  if (!response || response.error) {
+    setModelInputMode(false, modelSelect, modelId);
+    statusEl.textContent = t("modelListError");
+    return;
+  }
+
+  const models = Array.isArray(response.models) ? response.models : [];
+  if (!models.length) {
+    setModelInputMode(false, modelSelect, modelId);
+    statusEl.textContent = t("modelListEmpty");
+    return;
+  }
+
+  renderModelOptions(models, modelSelect);
+  setModelInputMode(true, modelSelect, modelId);
+  if (!models.find((item) => item.id === modelConfig.model)) {
+    modelConfig.model = models[0].id;
+    modelId.value = modelConfig.model;
+    saveModelConfig(modelConfig);
+    updateSummaryPanels();
+  }
+  modelSelect.value = modelConfig.model;
+  statusEl.textContent = t("modelListReady");
+}
+
+function renderModelOptions(models, modelSelect) {
+  modelSelect.innerHTML = "";
+  models.forEach((model) => {
+    const option = document.createElement("option");
+    option.value = model.id;
+    option.textContent = model.label || model.id;
+    modelSelect.appendChild(option);
+  });
+}
+
+function setModelInputMode(useSelect, modelSelect, modelId) {
+  modelSelect.classList.toggle("hidden", !useSelect);
+  modelId.classList.toggle("hidden", useSelect);
 }
 
 function initTopic() {

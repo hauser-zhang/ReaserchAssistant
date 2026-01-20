@@ -323,6 +323,10 @@ button:hover,
   font-family: "Space Grotesk", sans-serif;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .card input[type="file"] {
   color: transparent;
   cursor: pointer;

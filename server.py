@@ -62,6 +62,10 @@ def api_search(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
 def api_citations(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     return handle_module("citations", payload)
 
+@app.post("/api/models")
+def api_models(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    return list_models(payload)
+
 
 app.mount("/", StaticFiles(directory=str(ROOT), html=True), name="static")
 
@@ -160,6 +164,45 @@ def call_model(model: Dict[str, Any], prompt: str, system_prompt: str) -> str:
         return call_gemini(model, prompt, system_prompt)
     return call_openai_compatible(model, prompt, system_prompt)
 
+
+def list_models(payload: Dict[str, Any]) -> Dict[str, Any]:
+    model_cfg = normalize_model(payload.get("model") or payload)
+    if not model_cfg["api_key"]:
+        return {"models": [], "error": "Missing API key"}
+
+    try:
+        if model_cfg["provider"] == "gemini":
+            return list_gemini_models(model_cfg)
+        return list_openai_models(model_cfg)
+    except Exception:
+        return {"models": [], "error": "Failed to list models"}
+
+
+def list_openai_models(model: Dict[str, Any]) -> Dict[str, Any]:
+    if OpenAI is None:
+        return {"models": [], "error": "openai SDK not installed"}
+    client = OpenAI(api_key=model["api_key"], base_url=model["base_url"] or None)
+    response = client.models.list()
+    items = sorted({item.id for item in response.data if item.id})
+    return {"models": [{"id": model_id, "label": model_id} for model_id in items]}
+
+
+def list_gemini_models(model: Dict[str, Any]) -> Dict[str, Any]:
+    if genai is None:
+        return {"models": [], "error": "google-generativeai SDK not installed"}
+    genai.configure(api_key=model["api_key"])
+    models = []
+    for item in genai.list_models():
+        methods = set(getattr(item, "supported_generation_methods", []) or [])
+        if "generateContent" not in methods:
+            continue
+        name = getattr(item, "name", "")
+        if not name:
+            continue
+        model_id = name.split("/")[-1]
+        models.append({"id": model_id, "label": model_id})
+    models.sort(key=lambda entry: entry["id"])
+    return {"models": models}
 
 def call_openai_compatible(model: Dict[str, Any], prompt: str, system_prompt: str) -> str:
     if OpenAI is None:

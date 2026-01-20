@@ -101,7 +101,9 @@
           </select>
 
           <label for="modelId" data-i18n="modelIdLabel">模型 ID</label>
+          <select id="modelSelect" class="hidden"></select>
           <input id="modelId" type="text" placeholder="gpt-5.1" data-i18n-placeholder="modelIdPlaceholder" />
+          <p class="hint" id="modelListStatus"></p>
 
           <label for="apiKey" data-i18n="modelApiKeyLabel">API Key</label>
           <input id="apiKey" type="password" placeholder="sk-..." data-i18n-placeholder="modelApiKeyPlaceholder" />

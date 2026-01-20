@@ -46,6 +46,8 @@ On the home page, select a provider and set:
 
 API keys are stored in browser localStorage and are not written to the repository. The Python server uses the provided key to call the selected model provider at request time.
 
+The UI can fetch the available models from your provider after you enter an API key. If the provider does not support listing, the Model ID field stays manual.
+
 ## Reference Text Requirement
 
 Generation modules rely on extracted reference text. Upload PDFs/DOCX/TXT in `library.html` and wait for extraction to complete before running a module. If no reference text is available, the server will return an error.
