@@ -40,7 +40,9 @@ def store_library(payload: Dict[str, Any]) -> None:
     if not data:
         return
     DATA_DIR.mkdir(exist_ok=True)
-    LIBRARY_STORE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    existing = load_library_store()
+    merged = merge_library_store(existing, data)
+    LIBRARY_STORE.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def load_library_store() -> Dict[str, Any]:
@@ -61,16 +63,53 @@ def sanitize_library_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         cleaned_refs.append(
             {
                 "name": str(ref.get("name") or ""),
-                "content": limit_text(str(ref.get("content") or ""), 4000),
-                "sectionText": limit_text(str(ref.get("sectionText") or ""), 6000),
-                "sections": clip_sections(ref.get("sections") if isinstance(ref.get("sections"), dict) else {}),
+                "content": str(ref.get("content") or ""),
+                "sectionText": str(ref.get("sectionText") or ""),
+                "sections": ref.get("sections") if isinstance(ref.get("sections"), dict) else {},
             }
         )
     return {
         "references": cleaned_refs,
-        "draftText": limit_text(str(payload.get("draftText") or ""), 6000),
-        "draftSectionText": limit_text(str(payload.get("draftSectionText") or ""), 6000),
+        "draftText": str(payload.get("draftText") or ""),
+        "draftSectionText": str(payload.get("draftSectionText") or ""),
     }
+
+
+def merge_library_store(existing: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[str, Any]:
+    existing_refs = existing.get("references") if isinstance(existing.get("references"), list) else []
+    incoming_refs = incoming.get("references") if isinstance(incoming.get("references"), list) else []
+    merged_refs: Dict[str, Dict[str, Any]] = {}
+    for ref in existing_refs:
+        name = str(ref.get("name") or "")
+        if not name:
+            continue
+        merged_refs[name] = ref
+    for ref in incoming_refs:
+        name = str(ref.get("name") or "")
+        if not name:
+            continue
+        if name in merged_refs:
+            merged_refs[name] = merge_reference_record(merged_refs[name], ref)
+        else:
+            merged_refs[name] = ref
+
+    return {
+        "references": list(merged_refs.values()),
+        "draftText": str(incoming.get("draftText") or ""),
+        "draftSectionText": str(incoming.get("draftSectionText") or ""),
+    }
+
+
+def merge_reference_record(existing: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[str, Any]:
+    merged = dict(existing)
+    for key in ("content", "sectionText"):
+        value = str(incoming.get(key) or "").strip()
+        if value:
+            merged[key] = value
+    incoming_sections = incoming.get("sections") if isinstance(incoming.get("sections"), dict) else {}
+    if incoming_sections:
+        merged["sections"] = incoming_sections
+    return merged
 
 
 def clip_sections(sections: Dict[str, Any]) -> Dict[str, str]:
@@ -175,7 +214,13 @@ def build_context(payload: Dict[str, Any]) -> Dict[str, Any]:
     reference_text = build_reference_text(references, 5000)
     reference_sections = build_reference_sections(references, 6000)
     reference_titles = "; ".join([ref.get("name", "") for ref in references if ref.get("name")])
-    draft_section_text = str(payload.get("draftSectionText") or stored.get("draftSectionText") or "")
+    stored_draft = str(stored.get("draftText") or "")
+    if stored_draft and len(stored_draft) > len(draft_text):
+        draft_text = stored_draft
+    draft_section_text = str(payload.get("draftSectionText") or "")
+    stored_draft_sections = str(stored.get("draftSectionText") or "")
+    if stored_draft_sections and len(stored_draft_sections) > len(draft_section_text):
+        draft_section_text = stored_draft_sections
 
     model_cfg = normalize_model(payload.get("model") or {})
 
@@ -424,13 +469,28 @@ def merge_reference_data(
     for ref in primary:
         name = ref.get("name")
         if name and name in secondary_map:
-            merged.append({**secondary_map[name], **ref})
+            merged.append(merge_reference_payload(secondary_map[name], ref))
         else:
             merged.append(ref)
     for ref in secondary:
         name = ref.get("name")
         if name and name not in primary_map:
             merged.append(ref)
+    return merged
+
+
+def merge_reference_payload(existing: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[str, Any]:
+    merged = dict(existing)
+    for key, value in incoming.items():
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        if isinstance(value, dict) and not value:
+            continue
+        if isinstance(value, list) and not value:
+            continue
+        merged[key] = value
     return merged
 
 
@@ -453,4 +513,4 @@ def build_error(context: Dict[str, Any], zh_message: str, en_message: str) -> Di
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=9933, reload=False)
+    uvicorn.run("server:app", host="0.0.0.0", port=9931, reload=False)

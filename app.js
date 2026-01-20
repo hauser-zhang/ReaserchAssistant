@@ -155,6 +155,7 @@ const i18n = {
     libraryDraftHint: "支持 PDF/DOCX/TXT，用于与已发表论文对齐的博士论文写作上下文。",
     libraryDraftPlaceholder: "粘贴博士论文草稿文本",
     libraryDraftSave: "保存草稿文本",
+    libraryDraftClear: "清空草稿",
     topicTitle: "毕业论文题目生成",
     topicSubtitle: "结合项目设定、草稿文本与当前输入生成题目初稿。",
     topicInputLabel: "输入补充文本",
@@ -304,6 +305,7 @@ const i18n = {
     libraryDraftHint: "Supports PDF/DOCX/TXT as dissertation context aligned with your published papers.",
     libraryDraftPlaceholder: "Paste your doctoral draft text",
     libraryDraftSave: "Save draft text",
+    libraryDraftClear: "Clear draft",
     topicTitle: "Dissertation Title Generator",
     topicSubtitle: "Use project settings, draft text, and current input to draft titles.",
     topicInputLabel: "Additional input",
@@ -577,9 +579,10 @@ function initLibrary() {
   const draftUpload = document.querySelector("#draftUpload");
   const draftTextInput = document.querySelector("#draftTextInput");
   const saveDraft = document.querySelector("#saveDraft");
+  const clearDraft = document.querySelector("#clearDraft");
   const draftStatus = document.querySelector("#draftStatus");
 
-  if (!paperUpload || !paperList || !citationUpload || !citationStatus || !draftUpload || !draftTextInput || !saveDraft || !draftStatus) {
+  if (!paperUpload || !paperList || !citationUpload || !citationStatus || !draftUpload || !draftTextInput || !saveDraft || !clearDraft || !draftStatus) {
     return;
   }
 
@@ -618,13 +621,24 @@ function initLibrary() {
 
   saveDraft.addEventListener("click", () => {
     const normalized = normalizeTextWithLines(draftTextInput.value || "");
-    const text = sanitizeText(normalized);
     const structured = extractStructuredSections(normalized);
-    library.draftText = text.slice(0, 4000);
-    library.draftSectionText = structured.sectionText.slice(0, 3500);
+    library.draftText = normalized;
+    library.draftSectionText = structured.sectionText;
     library.draftFile = null;
     saveLibraryState(library);
     renderDraftStatus(library, t("statusDraftSaved"));
+    updateSummaryPanels();
+    syncLibraryState(library);
+  });
+
+  clearDraft.addEventListener("click", () => {
+    library.draftText = "";
+    library.draftSectionText = "";
+    library.draftFile = null;
+    draftTextInput.value = "";
+    draftUpload.value = "";
+    saveLibraryState(library);
+    renderDraftStatus(library);
     updateSummaryPanels();
     syncLibraryState(library);
   });
@@ -737,8 +751,8 @@ function wireModuleAction(moduleName, inputEl, outputEl) {
 
     const payload = {
       input,
-      draftText: library.draftText,
-      draftSectionText: library.draftSectionText,
+      draftText: trimText(library.draftText || "", 6000),
+      draftSectionText: trimText(library.draftSectionText || "", 6000),
       project,
       references: summarizeReferences(library.references),
       model
@@ -1690,10 +1704,10 @@ function extractDraftText(file, library, draftTextInput) {
     const normalized = normalizeTextWithLines(text);
     const cleaned = sanitizeText(normalized);
     const structured = extractStructuredSections(normalized);
-    library.draftText = cleaned.slice(0, 4000);
+    library.draftText = normalized;
     library.draftFile = { name: file.name, size: file.size };
-    library.draftSectionText = structured.sectionText.slice(0, 3500);
-    draftTextInput.value = cleaned.slice(0, 2000);
+    library.draftSectionText = structured.sectionText;
+    draftTextInput.value = normalized.slice(0, 2000);
     saveLibraryState(library);
     renderDraftStatus(library);
     updateSummaryPanels();
@@ -1715,13 +1729,14 @@ function extractDraftText(file, library, draftTextInput) {
 
 function updateReferenceRecord(record, library, listContainer, text) {
   const normalized = normalizeTextWithLines(text);
-  const cleaned = sanitizeText(normalized).slice(0, 12000);
+  const plainText = sanitizeText(normalized);
   const structured = extractStructuredSections(normalized);
-  record.content = cleaned;
+  record.content = normalized;
   record.sections = structured.sections;
-  record.sectionText = structured.sectionText.slice(0, 5000);
-  record.snippet = cleaned.slice(0, 240);
-  record.status = cleaned ? "ready" : "empty";
+  record.sectionText = structured.sectionText;
+  record.snippet = plainText.slice(0, 240);
+  record.hasContent = Boolean(plainText);
+  record.status = plainText ? "ready" : "empty";
   saveLibraryState(library);
   renderFileList(listContainer, library.references);
   updateSummaryPanels();
@@ -1750,6 +1765,14 @@ function truncateText(text, maxLength) {
   return cleaned.length <= maxLength ? cleaned : `${cleaned.slice(0, maxLength)}...`;
 }
 
+function trimText(text, maxLength) {
+  const cleaned = String(text || "");
+  if (!cleaned) {
+    return "";
+  }
+  return cleaned.length <= maxLength ? cleaned : cleaned.slice(0, maxLength);
+}
+
 function clipSections(sections) {
   const result = {};
   Object.keys(sections || {}).forEach((key) => {
@@ -1775,16 +1798,31 @@ function syncLibraryState(library) {
   if (!library) {
     return;
   }
-  const payload = {
-    references: summarizeReferences(library.references),
-    draftText: library.draftText || "",
-    draftSectionText: library.draftSectionText || ""
-  };
+  const payload = buildLibrarySyncPayload(library);
   callApi("/api/library/sync", payload);
 }
 
+function buildLibrarySyncPayload(library) {
+  return {
+    references: (library.references || []).map((ref) => ({
+      name: ref.name,
+      size: ref.size,
+      content: ref.content || "",
+      sectionText: ref.sectionText || "",
+      sections: ref.sections || {}
+    })),
+    draftText: library.draftText || "",
+    draftSectionText: library.draftSectionText || ""
+  };
+}
+
 function hasReferenceText(references) {
-  return (references || []).some((ref) => String(ref.content || "").trim().length > 30);
+  return (references || []).some((ref) => {
+    if (ref.status === "ready" || ref.hasContent) {
+      return true;
+    }
+    return String(ref.sectionText || ref.content || "").trim().length > 30;
+  });
 }
 
 function readArrayBuffer(file, onLoad) {
@@ -1837,7 +1875,25 @@ function loadLibraryState() {
 }
 
 function saveLibraryState(state) {
-  saveState(STORAGE_KEYS.library, state);
+  saveState(STORAGE_KEYS.library, buildLibraryStoragePayload(state));
+}
+
+function buildLibraryStoragePayload(state) {
+  const references = (state.references || []).map((ref) => ({
+    name: ref.name,
+    size: ref.size,
+    type: ref.type,
+    status: ref.status,
+    snippet: ref.snippet,
+    hasContent: ref.hasContent
+  }));
+  return {
+    ...defaultLibrary,
+    ...state,
+    references,
+    draftText: trimText(state.draftText || "", 4000),
+    draftSectionText: trimText(state.draftSectionText || "", 3500)
+  };
 }
 
 function loadModelConfig() {
